@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, AlertTriangle, Clock, ShieldCheck, Camera } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Clock, ShieldCheck, Camera, Maximize, Minimize } from 'lucide-react';
 import { Html5Qrcode } from "html5-qrcode";
 import axios from 'axios';
 import { supabase } from '../lib/supabase';
@@ -12,6 +12,7 @@ const Kiosk = () => {
     const [error, setError] = useState(null);
     const [location, setLocation] = useState(null);
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const [photo, setPhoto] = useState(null);
     const scannerRef = useRef(null);
     const isProcessingRef = useRef(false);
@@ -28,9 +29,15 @@ const Kiosk = () => {
 
         startScanner();
 
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+
         return () => {
             clearInterval(timer);
             stopScanner();
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
         };
     }, []);
 
@@ -78,6 +85,16 @@ const Kiosk = () => {
             } catch (err) {
                 console.error("Error al detener scanner:", err);
             }
+        }
+    };
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
         }
     };
 
@@ -165,7 +182,17 @@ const Kiosk = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-between p-4 md:p-8 font-sans overflow-y-auto overflow-x-hidden">
+        <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-between p-4 md:p-8 font-sans overflow-y-auto overflow-x-hidden relative">
+
+            {/* Fullscreen Toggle Button */}
+            <button
+                onClick={toggleFullscreen}
+                className="fixed bottom-20 right-4 z-50 bg-white/10 hover:bg-white/20 p-3 rounded-full backdrop-blur-md border border-white/10 transition-all active:scale-90"
+                title={isFullscreen ? "Salir de Pantalla Completa" : "Pantalla Completa"}
+            >
+                {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+            </button>
+
             <style>{`
                 #reader__scan_region video {
                     width: 100% !important;
@@ -313,7 +340,7 @@ const Kiosk = () => {
                     <div className={`w-1.5 h-1.5 rounded-full ${location ? 'bg-green-500' : 'bg-red-500 animate-ping'}`} />
                     <span>GPS: {location ? 'ACTIVO' : 'BUSCANDO...'}</span>
                 </div>
-                <span>SounMix v2.6.2</span>
+                <span>SounMix v2.6.5</span>
             </footer>
         </div>
     );
