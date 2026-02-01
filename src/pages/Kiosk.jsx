@@ -212,15 +212,28 @@ const Kiosk = () => {
                 #reader__scan_region { aspect-ratio: 1/1; }
             `}</style>
 
-            <header className="w-full max-w-4xl flex justify-between items-center relative z-10 mb-4 px-2">
-                <div className="flex items-center space-x-3">
-                    <img src={logo} alt="SounMix" className="h-8 w-auto opacity-80" />
-                    <div className="h-4 w-[1px] bg-white/20" />
-                    <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">SOUNMIX</h1>
+            <header className="w-full max-w-5xl flex justify-between items-start relative z-10 mb-6 px-4 md:px-6 pt-2">
+                <div className="flex items-center space-x-3 mt-1">
+                    <img src={logo} alt="SounMix" className="h-7 md:h-9 w-auto opacity-90" />
+                    <div className="h-5 w-[1px] bg-white/10" />
+                    <div className="flex flex-col">
+                        <h1 className="text-base md:text-lg font-black tracking-tighter leading-none text-white">SOUNMIX</h1>
+                        <span className="text-[8px] text-blue-500 font-bold tracking-[.2em] uppercase">Terminal</span>
+                    </div>
                 </div>
-                <div className="flex items-center space-x-2 text-xl font-mono text-blue-500/80">
-                    <Clock size={18} className="animate-pulse" />
-                    <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+
+                <div className="flex flex-col items-end">
+                    <div className="flex items-baseline space-x-1 text-white">
+                        <span className="text-3xl md:text-4xl font-light tracking-tighter tabular-nums">
+                            {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).split(' ')[0]}
+                        </span>
+                        <span className="text-xs md:text-sm font-bold text-blue-500 uppercase tracking-widest pb-1 opacity-80">
+                            {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).split(' ')[1]}
+                        </span>
+                    </div>
+                    <div className="text-[9px] md:text-[10px] text-slate-500 font-medium uppercase tracking-[.1em] mt-[-4px]">
+                        {currentTime.toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' }).replace('.', '')}
+                    </div>
                 </div>
             </header>
 
