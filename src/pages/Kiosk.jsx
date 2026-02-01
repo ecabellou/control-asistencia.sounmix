@@ -223,15 +223,10 @@ const Kiosk = () => {
                 </div>
 
                 <div className="flex flex-col items-end">
-                    <div className="flex items-baseline space-x-1 text-white">
-                        <span className="text-3xl md:text-4xl font-light tracking-tighter tabular-nums">
-                            {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).split(' ')[0]}
-                        </span>
-                        <span className="text-xs md:text-sm font-bold text-blue-500 uppercase tracking-widest pb-1 opacity-80">
-                            {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).split(' ')[1]}
-                        </span>
+                    <div className="text-3xl md:text-4xl font-light tracking-tighter tabular-nums text-white leading-none">
+                        {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
                     </div>
-                    <div className="text-[9px] md:text-[10px] text-slate-500 font-medium uppercase tracking-[.1em] mt-[-4px]">
+                    <div className="text-[9px] md:text-[10px] text-slate-500 font-medium uppercase tracking-[.1em] mt-1">
                         {currentTime.toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' }).replace('.', '')}
                     </div>
                 </div>
