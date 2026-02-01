@@ -29,11 +29,13 @@ const Kiosk = () => {
         };
     }, []);
 
-    // Reiniciar scanner cuando vuelve a idle
+    // Reiniciar scanner cuando vuelve a idle, y asegurar que NO se apague durante 'capturing'
     useEffect(() => {
         if (status === 'idle') {
             startScanner();
-        } else {
+        } else if (status !== 'capturing' && status !== 'scanning') {
+            // Solo detenemos el scanner cuando pasamos a confirmar o estados finales
+            // Mantenerlo encendido durante 'capturing' para poder tomar la foto
             stopScanner();
         }
     }, [status]);
