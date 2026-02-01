@@ -38,12 +38,14 @@ const Kiosk = () => {
         }
     }, [status]);
 
+    const [photo, setPhoto] = useState(null);
+
     const startScanner = async () => {
         try {
             const html5QrCode = new Html5Qrcode("reader");
             scannerRef.current = html5QrCode;
 
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            const config = { fps: 15, qrbox: { width: 250, height: 250 } };
 
             await html5QrCode.start(
                 { facingMode: "user" }, // "environment" para cámara trasera en tablets
@@ -80,7 +82,7 @@ const Kiosk = () => {
     };
 
     const processScan = async (employeeId) => {
-        if (status !== 'idle') return; // Evitar múltiples escaneos
+        if (status !== 'idle') return;
 
         setStatus('scanning');
         setError(null);
@@ -112,10 +114,9 @@ const Kiosk = () => {
                 rut: data.rut,
                 nextEvent: events[logCount]
             });
-            setStatus('confirming');
 
-            // Auto-confirmar después de 3 segundos si no hay acción
-            // O podemos dejar que el usuario presione el botón
+            // Pasamos a fase de captura de foto
+            setStatus('capturing');
         } catch (err) {
             setError(err.message);
             setStatus('error');
@@ -123,15 +124,31 @@ const Kiosk = () => {
         }
     };
 
+    const capturePhoto = () => {
+        const video = document.querySelector("#reader video");
+        if (!video) return;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+        setPhoto(dataUrl);
+        setStatus('confirming');
+    };
+
     const confirmMarking = async () => {
-        if (!scannedData) return;
+        if (!scannedData || !photo) return;
         setStatus('submitting');
         try {
             const res = await axios.post('https://twyndowkjummyjoouqnf.supabase.co/functions/v1/process-attendance', {
                 employeeId: scannedData.id,
                 lat: location?.lat,
                 lng: location?.lng,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                photo: photo // Enviamos la foto a la Edge Function
             }, {
                 headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` }
             });
@@ -140,6 +157,7 @@ const Kiosk = () => {
             setTimeout(() => {
                 setStatus('idle');
                 setScannedData(null);
+                setPhoto(null);
             }, 6000);
         } catch (err) {
             setError(err.response?.data?.error || "Error al registrar");
@@ -210,35 +228,69 @@ const Kiosk = () => {
                         </motion.div>
                     )}
 
-                    {status === 'confirming' && scannedData && (
+                    {status === 'capturing' && scannedData && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                            className="text-center w-full"
+                        >
+                            <div className="relative w-80 h-80 mx-auto mb-10">
+                                <div id="reader" className="w-full h-full overflow-hidden rounded-3xl border-4 border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.2)]"></div>
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <div className="w-64 h-64 border-2 border-white/30 rounded-full border-dashed animate-pulse" />
+                                </div>
+                            </div>
+                            <div className="space-y-6">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-amber-500 mb-1">Verificación Facial</h2>
+                                    <p className="text-white text-lg font-medium">{scannedData.name}</p>
+                                    <p className="text-slate-400 text-sm">Por favor, mire a la cámara y presione el botón</p>
+                                </div>
+                                <button
+                                    onClick={capturePhoto}
+                                    className="px-10 py-5 bg-amber-500 hover:bg-amber-600 rounded-2xl font-black text-xl shadow-xl shadow-amber-500/20 transition-all active:scale-95 flex items-center space-x-3 mx-auto"
+                                >
+                                    <Camera size={28} />
+                                    <span>TOMAR FOTO</span>
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {status === 'confirming' && scannedData && photo && (
                         <motion.div
                             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-                            className="w-full bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[2rem] shadow-2xl text-center"
+                            className="w-full max-w-lg bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[2rem] shadow-2xl text-center"
                         >
-                            <div className="w-20 h-20 bg-blue-600 rounded-full mx-auto mb-6 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                                <ShieldCheck className="text-white" size={40} />
+                            <div className="flex justify-center mb-8 gap-6 items-center">
+                                <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/20">
+                                    <ShieldCheck className="text-white" size={48} />
+                                </div>
+                                <div className="w-32 h-32 rounded-2xl overflow-hidden border-4 border-blue-500 shadow-xl">
+                                    <img src={photo} alt="Captura" className="w-full h-full object-cover" />
+                                </div>
                             </div>
-                            <h3 className="text-sm text-blue-400 font-bold uppercase tracking-widest mb-2">Trabajador Identificado</h3>
-                            <h2 className="text-4xl font-bold mb-1">{scannedData.name}</h2>
-                            <p className="text-slate-400 mb-8 font-mono">{scannedData.rut}</p>
 
-                            <div className="bg-slate-900/50 rounded-2xl p-6 mb-8 border border-white/5">
-                                <p className="text-xs text-slate-500 uppercase mb-1">Acción Detectada</p>
-                                <p className="text-2xl font-black text-white">{scannedData.nextEvent}</p>
+                            <div className="space-y-2 mb-8">
+                                <h3 className="text-xs text-blue-400 font-bold uppercase tracking-widest">Confirmación de Identidad</h3>
+                                <h2 className="text-3xl font-bold">{scannedData.name}</h2>
+                                <div className="bg-slate-900/80 rounded-2xl p-4 border border-white/5 mt-4">
+                                    <p className="text-[10px] text-slate-500 uppercase mb-1">Evento a Registrar</p>
+                                    <p className="text-xl font-black text-white">{scannedData.nextEvent}</p>
+                                </div>
                             </div>
 
                             <div className="flex gap-4">
                                 <button
-                                    onClick={() => { setStatus('idle'); setScannedData(null); }}
+                                    onClick={() => { setStatus('idle'); setScannedData(null); setPhoto(null); }}
                                     className="flex-1 px-6 py-4 bg-white/5 hover:bg-white/10 rounded-2xl font-bold transition-all border border-white/10"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     onClick={confirmMarking}
-                                    className="flex-2 px-12 py-4 bg-blue-600 hover:bg-blue-700 rounded-2xl font-extrabold text-lg shadow-xl shadow-blue-600/20 transition-all active:scale-95"
+                                    className="flex-2 px-10 py-4 bg-blue-600 hover:bg-blue-700 rounded-2xl font-extrabold text-lg shadow-xl shadow-blue-600/20 transition-all active:scale-95 uppercase tracking-tighter"
                                 >
-                                    Confirmar Registro
+                                    Confirmar Todo
                                 </button>
                             </div>
                         </motion.div>
