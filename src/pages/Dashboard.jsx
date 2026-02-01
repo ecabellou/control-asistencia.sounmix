@@ -16,7 +16,12 @@ const Dashboard = () => {
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                const res = await axios.get('http://localhost:3001/api/dashboard/stats');
+                // Usando Edge Function de Supabase
+                const res = await axios.get('https://twyndowkjummyjoouqnf.supabase.co/functions/v1/get-dashboard-stats', {
+                    headers: {
+                        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+                    }
+                });
                 const apiStats = res.data.stats;
                 setStats(prev => prev.map((s, i) => ({ ...s, value: apiStats[i].value })));
                 setRecentAlerts(res.data.recentAlerts);

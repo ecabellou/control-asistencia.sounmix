@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Plus, Search, Edit2, Trash2, QrCode as QRIcon, X } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
+import { supabase } from '../lib/supabase';
 
 const API_URL = 'http://localhost:3001/api';
 
@@ -27,8 +28,14 @@ const Employees = () => {
 
     const fetchEmployees = async () => {
         try {
-            const res = await axios.get(`${API_URL}/employees`);
-            setEmployees(res.data);
+            const { data, error } = await supabase
+                .from('employees')
+                .select('*')
+                .eq('active', true)
+                .order('full_name');
+
+            if (error) throw error;
+            setEmployees(data);
         } catch (err) {
             console.error('Error fetching employees', err);
         }
@@ -46,15 +53,22 @@ const Employees = () => {
         e.preventDefault();
         try {
             if (editingEmployee) {
-                await axios.put(`${API_URL}/employees/${editingEmployee.id}`, formData);
+                const { error } = await supabase
+                    .from('employees')
+                    .update(formData)
+                    .eq('id', editingEmployee.id);
+                if (error) throw error;
             } else {
-                await axios.post(`${API_URL}/employees`, formData);
+                const { error } = await supabase
+                    .from('employees')
+                    .insert([formData]);
+                if (error) throw error;
             }
             setShowModal(false);
             setEditingEmployee(null);
             fetchEmployees();
         } catch (err) {
-            alert('Error al guardar trabajador');
+            alert('Error al guardar trabajador: ' + err.message);
         }
     };
 
@@ -65,8 +79,13 @@ const Employees = () => {
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('¿Estás seguro de eliminar a este trabajador?')) {
-            await axios.delete(`${API_URL}/employees/${id}`);
+        if (window.confirm('¿Estás seguro de desactivar a este trabajador?')) {
+            const { error } = await supabase
+                .from('employees')
+                .update({ active: false })
+                .eq('id', id);
+
+            if (error) alert('Error: ' + error.message);
             fetchEmployees();
         }
     };

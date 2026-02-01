@@ -3,6 +3,7 @@ import { BrowserMultiFormatReader } from '@zxing/library';
 import axios from 'axios';
 import { QrCode, MapPin, CheckCircle, AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '../lib/supabase';
 
 const API_URL = 'http://localhost:3001/api';
 
@@ -50,17 +51,36 @@ const Scanner = () => {
     const handleScan = async (employeeId) => {
         setStatus('scanning');
         try {
-            // First, just identify who is scanning
-            const res = await axios.get(`${API_URL}/attendance/check-status/${employeeId}`);
+            // Consulta directa a Supabase para el estado del trabajador
+            const { data, error } = await supabase
+                .from('employees')
+                .select('full_name')
+                .eq('id', employeeId)
+                .single();
+
+            if (error || !data) throw new Error("Trabajador no encontrado");
+
+            // Para el evento siguiente, consultamos logs de hoy
+            const today = new Date().toISOString().split('T')[0];
+            const { data: logs } = await supabase
+                .from('attendance_logs')
+                .select('event_type')
+                .eq('employee_id', employeeId)
+                .gte('timestamp', `${today}T00:00:00Z`)
+                .order('timestamp', { ascending: true });
+
+            const logCount = logs?.length ?? 0;
+            const events = ['ENTRADA', 'INICIO COLACIÓN', 'TÉRMINO COLACIÓN', 'SALIDA'];
+
             setScannedData({
                 id: employeeId,
-                name: res.data.name,
-                nextEvent: res.data.nextEvent,
-                isComplete: res.data.isComplete
+                name: data.full_name,
+                nextEvent: logCount < 4 ? events[logCount] : 'JORNADA COMPLETA',
+                isComplete: logCount >= 4
             });
             setStatus('confirming');
         } catch (err) {
-            setError(err.response?.data?.error || "Error al identificar QR");
+            setError(err.message || "Error al identificar QR");
             setStatus('error');
             setTimeout(() => setStatus('idle'), 3000);
         }
@@ -72,13 +92,21 @@ const Scanner = () => {
         setStatus('submitting');
         try {
             const timestamp = new Date().toISOString();
-            const res = await axios.post(`${API_URL}/attendance/scan`, {
+            // Usando Edge Function para procesar la asistencia
+            const res = await axios.post('https://twyndowkjummyjoouqnf.supabase.co/functions/v1/process-attendance', {
                 employeeId: scannedData.id,
                 lat: location?.lat,
                 lng: location?.lng,
                 timestamp
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+                }
             });
-            setTicket(res.data.ticket);
+
+            // Reutilizamos el formateador de tickets local para el feedback visual
+            // (Podríamos moverlo a la edge function también luego)
+            setTicket(`Registro Exitoso: ${res.data.eventType}\nHash: ${res.data.hash}\nFecha: ${new Date().toLocaleString()}`);
             setStatus('success');
             setScannedData(null);
             setTimeout(() => {

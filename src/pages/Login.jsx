@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { motion } from 'framer-motion';
 import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -15,15 +15,25 @@ const Login = () => {
         setError('');
         try {
             console.log("Intentando login para:", email);
-            const res = await axios.post('http://localhost:3001/api/auth/login', { email, password });
-            localStorage.setItem('token', res.data.token);
-            localStorage.setItem('user', JSON.stringify(res.data.user));
+
+            // Login directo con Supabase Auth
+            const { data, error: authError } = await supabase.auth.signInWithPassword({
+                email,
+                password
+            });
+
+            if (authError) throw authError;
+
+            // Guardamos el token (access_token de la sesión)
+            localStorage.setItem('token', data.session.access_token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+
             window.location.href = '/';
         } catch (err) {
-            console.error("Error en login:", err.response?.data);
-            const errorMsg = err.response?.data?.error || 'Error al iniciar sesión';
+            console.error("Error en login:", err);
+            const errorMsg = err.message || 'Error al iniciar sesión';
 
-            if (errorMsg.includes('confirm')) {
+            if (errorMsg.toLowerCase().includes('confirm')) {
                 setError('Por favor revisa tu email para confirmar la cuenta (o desactiva la confirmación en Supabase).');
             } else {
                 setError(errorMsg + ' (Verifica email y clave)');
