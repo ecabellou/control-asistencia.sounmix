@@ -15,6 +15,7 @@
     "axios": "^1.13.4",
     "bcryptjs": "^3.0.3",
     "compression": "^1.8.1",
+    "core-js": "^3.48.0",
     "cors": "^2.8.6",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
@@ -28,6 +29,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^6.30.3",
+    "regenerate-unicode-properties": "^10.2.2",
     "sqlite3": "^5.1.7",
     "tailwindcss": "^4.1.18",
     "uuid": "^13.0.0"
