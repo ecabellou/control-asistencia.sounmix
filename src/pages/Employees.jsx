@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Plus, Search, Edit2, Trash2, QrCode as QRIcon, X } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { supabase } from '../lib/supabase';
-
-const API_URL = 'http://localhost:3001/api';
 
 const Employees = () => {
     const [employees, setEmployees] = useState([]);
@@ -21,6 +18,7 @@ const Employees = () => {
         is_telework: false
     });
     const [qrValue, setQrValue] = useState(null);
+    const [qrEmployee, setQrEmployee] = useState(null);
 
     useEffect(() => {
         fetchEmployees();
@@ -90,6 +88,14 @@ const Employees = () => {
         }
     };
 
+    const handlePrint = () => {
+        if (!qrEmployee) return;
+        const originalTitle = document.title;
+        document.title = `Credencial - ${qrEmployee.full_name} - ${qrEmployee.rut}`;
+        window.print();
+        document.title = originalTitle;
+    };
+
     return (
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
@@ -103,7 +109,9 @@ const Employees = () => {
                 </div>
                 <button
                     onClick={() => {
-                        setShowModal(true); setEditingEmployee(null); setFormData({
+                        setShowModal(true);
+                        setEditingEmployee(null);
+                        setFormData({
                             rut: '', full_name: '', email: '', phone: '', weekly_hours_agreed: 42,
                             shift_start: '09:00', shift_end: '18:00', is_telework: false
                         });
@@ -144,7 +152,7 @@ const Employees = () => {
                                 <td className="px-6 py-4">
                                     <div className="flex justify-center space-x-2">
                                         <button
-                                            onClick={() => setQrValue(emp.id)}
+                                            onClick={() => { setQrValue(emp.id); setQrEmployee(emp); }}
                                             className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                                             title="Generar QR"
                                         >
@@ -263,19 +271,23 @@ const Employees = () => {
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center">
                         <h3 className="text-xl font-bold text-slate-800 mb-6 uppercase tracking-tight">QR Identificador Único</h3>
-                        <div className="p-4 bg-white border-2 border-slate-100 rounded-2xl shadow-inner">
+                        <div className="p-4 bg-white border-2 border-slate-100 rounded-2xl shadow-inner mb-4">
                             <QRCodeCanvas value={qrValue} size={250} level="H" />
                         </div>
-                        <p className="mt-6 text-slate-500 text-sm mb-4">ID: {qrValue}</p>
+                        <div className="text-center mb-6">
+                            <p className="text-lg font-bold text-slate-900">{qrEmployee?.full_name}</p>
+                            <p className="text-sm text-slate-500 font-mono">{qrEmployee?.rut}</p>
+                        </div>
                         <div className="flex space-x-4">
                             <button
-                                onClick={() => window.print()}
-                                className="bg-slate-800 text-white px-6 py-2 rounded-xl text-sm font-semibold hover:bg-slate-900 transition-all"
+                                onClick={handlePrint}
+                                className="bg-slate-800 text-white px-6 py-2 rounded-xl text-sm font-semibold hover:bg-slate-900 transition-all flex items-center space-x-2"
                             >
-                                Imprimir Credencial
+                                <QRIcon size={16} />
+                                <span>Imprimir Credencial</span>
                             </button>
                             <button
-                                onClick={() => setQrValue(null)}
+                                onClick={() => { setQrValue(null); setQrEmployee(null); }}
                                 className="bg-slate-100 text-slate-600 px-6 py-2 rounded-xl text-sm font-semibold hover:bg-slate-200 transition-all"
                             >
                                 Cerrar
