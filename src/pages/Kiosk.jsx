@@ -208,50 +208,56 @@ const Kiosk = () => {
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl relative z-10 py-10">
                 <AnimatePresence mode="wait">
-                    {status === 'idle' && (
+                    {(status === 'idle' || status === 'capturing') && (
                         <motion.div
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                             className="text-center w-full"
                         >
                             <div className="relative w-80 h-80 mx-auto mb-10">
-                                <div id="reader" className="w-full h-full overflow-hidden rounded-3xl border-2 border-blue-500/50 shadow-[0_0_30px_rgba(59,130,246,0.2)] bg-black"></div>
-                                {/* Scanning Frame Overlay */}
-                                <div className="absolute inset-0 border-[20px] border-slate-950/40 pointer-events-none rounded-3xl" />
-                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-1 bg-blue-500/80 shadow-[0_0_15px_rgba(59,130,246,1)] animate-pulse" />
-                            </div>
-                            <div className="space-y-4">
-                                <h2 className="text-3xl font-black tracking-tight">Acerque su Código QR</h2>
-                                <p className="text-slate-400 max-w-xs mx-auto text-sm leading-relaxed">
-                                    Coloque su credencial frente a la cámara para iniciar el registro automático.
-                                </p>
-                            </div>
-                        </motion.div>
-                    )}
+                                {/* El elemento #reader debe estar SIEMPRE en el DOM para que la cámara no se apague */}
+                                <div
+                                    id="reader"
+                                    className={`w-full h-full overflow-hidden rounded-3xl border-4 transition-all duration-500 ${status === 'capturing' ? 'border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.3)]' : 'border-blue-500/50 shadow-[0_0_30px_rgba(59,130,246,0.2)]'} bg-black`}
+                                ></div>
 
-                    {status === 'capturing' && scannedData && (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                            className="text-center w-full"
-                        >
-                            <div className="relative w-80 h-80 mx-auto mb-10">
-                                <div id="reader" className="w-full h-full overflow-hidden rounded-3xl border-4 border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.2)]"></div>
-                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <div className="w-64 h-64 border-2 border-white/30 rounded-full border-dashed animate-pulse" />
-                                </div>
+                                {status === 'idle' && (
+                                    <>
+                                        <div className="absolute inset-0 border-[20px] border-slate-950/40 pointer-events-none rounded-3xl" />
+                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-1 bg-blue-500/80 shadow-[0_0_15px_rgba(59,130,246,1)] animate-pulse" />
+                                    </>
+                                )}
+
+                                {status === 'capturing' && (
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <div className="w-64 h-64 border-2 border-white/30 rounded-full border-dashed animate-pulse" />
+                                    </div>
+                                )}
                             </div>
+
                             <div className="space-y-6">
-                                <div>
-                                    <h2 className="text-2xl font-bold text-amber-500 mb-1">Verificación Facial</h2>
-                                    <p className="text-white text-lg font-medium">{scannedData.name}</p>
-                                    <p className="text-slate-400 text-sm">Por favor, mire a la cámara y presione el botón</p>
-                                </div>
-                                <button
-                                    onClick={capturePhoto}
-                                    className="px-10 py-5 bg-amber-500 hover:bg-amber-600 rounded-2xl font-black text-xl shadow-xl shadow-amber-500/20 transition-all active:scale-95 flex items-center space-x-3 mx-auto"
-                                >
-                                    <Camera size={28} />
-                                    <span>TOMAR FOTO</span>
-                                </button>
+                                {status === 'idle' ? (
+                                    <div className="space-y-4">
+                                        <h2 className="text-3xl font-black tracking-tight">Acerque su Código QR</h2>
+                                        <p className="text-slate-400 max-w-xs mx-auto text-sm leading-relaxed">
+                                            Coloque su credencial frente a la cámara para iniciar el registro automático.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-amber-500 mb-1">Verificación Facial</h2>
+                                            <p className="text-white text-lg font-medium">{scannedData?.name}</p>
+                                            <p className="text-slate-400 text-sm">Mire a la cámara y presione el botón</p>
+                                        </div>
+                                        <button
+                                            onClick={capturePhoto}
+                                            className="px-10 py-5 bg-amber-500 hover:bg-amber-600 rounded-2xl font-black text-xl shadow-xl shadow-amber-500/20 transition-all active:scale-95 flex items-center space-x-3 mx-auto"
+                                        >
+                                            <Camera size={28} />
+                                            <span>TOMAR FOTO</span>
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </motion.div>
                     )}
