@@ -22,6 +22,7 @@
     "express": "^5.2.1",
     "framer-motion": "^12.29.2",
     "helmet": "^8.1.0",
+    "html5-qrcode": "^2.3.8",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.563.0",
     "morgan": "^1.10.1",

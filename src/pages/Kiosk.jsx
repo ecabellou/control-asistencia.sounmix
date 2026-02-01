@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { QrCode, MapPin, CheckCircle, AlertTriangle, Clock, ShieldCheck } from 'lucide-react';
+import { QrCode, MapPin, CheckCircle, AlertTriangle, Clock, ShieldCheck, Camera } from 'lucide-react';
+import { Html5Qrcode } from "html5-qrcode";
 import axios from 'axios';
 import { supabase } from '../lib/supabase';
 import logo from '../assets/logo.png';
@@ -11,6 +12,7 @@ const Kiosk = () => {
     const [error, setError] = useState(null);
     const [location, setLocation] = useState(null);
     const [currentTime, setCurrentTime] = useState(new Date());
+    const scannerRef = useRef(null);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -21,8 +23,54 @@ const Kiosk = () => {
                 (err) => console.warn("GPS no disponible:", err.message)
             );
         }
-        return () => clearInterval(timer);
+        return () => {
+            clearInterval(timer);
+            stopScanner();
+        };
     }, []);
+
+    // Reiniciar scanner cuando vuelve a idle
+    useEffect(() => {
+        if (status === 'idle') {
+            startScanner();
+        } else {
+            stopScanner();
+        }
+    }, [status]);
+
+    const startScanner = async () => {
+        try {
+            const html5QrCode = new Html5Qrcode("reader");
+            scannerRef.current = html5QrCode;
+
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+            await html5QrCode.start(
+                { facingMode: "user" }, // "environment" para cámara trasera en tablets
+                config,
+                (qrCodeMessage) => {
+                    processScan(qrCodeMessage);
+                },
+                (errorMessage) => {
+                    // Ignorar errores de escaneo (no QR detectado en el frame)
+                }
+            );
+        } catch (err) {
+            console.error("No se pudo iniciar la cámara:", err);
+            setError("No se detectó cámara o acceso denegado.");
+        }
+    };
+
+    const stopScanner = async () => {
+        if (scannerRef.current && scannerRef.current.isScanning) {
+            try {
+                await scannerRef.current.stop();
+                scannerRef.current = null;
+            } catch (err) {
+                console.error("Error al detener scanner:", err);
+            }
+        }
+    };
 
     const handleScanPlaceholder = () => {
         // En una implementación real con cámara usaríamos un hook de escaneo continuo.
@@ -32,16 +80,18 @@ const Kiosk = () => {
     };
 
     const processScan = async (employeeId) => {
+        if (status !== 'idle') return; // Evitar múltiples escaneos
+
         setStatus('scanning');
         setError(null);
         try {
-            const { data, error } = await supabase
+            const { data, error: empError } = await supabase
                 .from('employees')
                 .select('id, full_name, rut')
                 .eq('id', employeeId)
                 .single();
 
-            if (error || !data) throw new Error("Código QR no válido o trabajador no encontrado");
+            if (empError || !data) throw new Error("Trabajador no reconocido");
 
             const today = new Date().toISOString().split('T')[0];
             const { data: logs } = await supabase
@@ -54,9 +104,7 @@ const Kiosk = () => {
             const logCount = logs?.length ?? 0;
             const events = ['ENTRADA', 'INICIO COLACIÓN', 'TÉRMINO COLACIÓN', 'SALIDA'];
 
-            if (logCount >= 4) {
-                throw new Error("Jornada ya completada por hoy");
-            }
+            if (logCount >= 4) throw new Error("Jornada completada hoy");
 
             setScannedData({
                 id: employeeId,
@@ -92,9 +140,9 @@ const Kiosk = () => {
             setTimeout(() => {
                 setStatus('idle');
                 setScannedData(null);
-            }, 5000);
+            }, 6000);
         } catch (err) {
-            setError(err.response?.data?.error || "Error al registrar asistencia");
+            setError(err.response?.data?.error || "Error al registrar");
             setStatus('error');
             setTimeout(() => setStatus('idle'), 4000);
         }
@@ -102,6 +150,18 @@ const Kiosk = () => {
 
     return (
         <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-between p-8 font-sans overflow-hidden">
+            <style>{`
+                #reader__scan_region video {
+                    width: 100% !important;
+                    height: 100% !important;
+                    object-fit: cover !important;
+                    border-radius: 1.5rem !important;
+                }
+                #reader {
+                    border: none !important;
+                }
+            `}</style>
+
             {/* Background Orbs */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 rounded-full blur-[120px]" />
@@ -111,11 +171,11 @@ const Kiosk = () => {
             {/* Header */}
             <header className="w-full max-w-4xl flex justify-between items-center relative z-10">
                 <div className="flex items-center space-x-4">
-                    <img src={logo} alt="SounMix Logo" className="h-12 w-auto brightness-110" />
-                    <div className="h-8 w-[1px] bg-white/20" />
+                    <img src={logo} alt="SounMix Logo" className="h-10 w-auto" />
+                    <div className="h-6 w-[1px] bg-white/20" />
                     <div>
                         <h1 className="text-xl font-bold tracking-tight">SounMix</h1>
-                        <p className="text-[10px] text-slate-400 uppercase tracking-[0.2em]">Punto de Asistencia</p>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-[0.2em]">Asistencia Digital</p>
                     </div>
                 </div>
                 <div className="text-right">
@@ -128,27 +188,24 @@ const Kiosk = () => {
             </header>
 
             {/* Main Content Area */}
-            <main className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl relative z-10">
+            <main className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl relative z-10 py-10">
                 <AnimatePresence mode="wait">
                     {status === 'idle' && (
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.1 }}
-                            className="text-center space-y-8"
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="text-center w-full"
                         >
-                            <div
-                                onClick={handleScanPlaceholder}
-                                className="w-64 h-64 bg-white/5 border-2 border-dashed border-white/20 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/10 transition-all group relative mx-auto"
-                            >
-                                <div className="absolute inset-0 bg-blue-500/5 rounded-3xl animate-pulse" />
-                                <QrCode size={80} className="text-blue-500 mb-4 group-hover:scale-110 transition-transform" />
-                                <p className="text-sm font-medium text-slate-300">Acerque su Código QR</p>
-                                <div className="mt-4 flex space-x-1">
-                                    {[0, 1, 2].map(i => <div key={i} className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.2}s` }} />)}
-                                </div>
+                            <div className="relative w-80 h-80 mx-auto mb-10">
+                                <div id="reader" className="w-full h-full overflow-hidden rounded-3xl border-2 border-blue-500/50 shadow-[0_0_30px_rgba(59,130,246,0.2)] bg-black"></div>
+                                {/* Scanning Frame Overlay */}
+                                <div className="absolute inset-0 border-[20px] border-slate-950/40 pointer-events-none rounded-3xl" />
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-1 bg-blue-500/80 shadow-[0_0_15px_rgba(59,130,246,1)] animate-pulse" />
                             </div>
-                            <div className="space-y-2">
-                                <h2 className="text-3xl font-bold">Bienvenido</h2>
-                                <p className="text-slate-400">Posicione su credencial frente a la cámara para marcar su jornada</p>
+                            <div className="space-y-4">
+                                <h2 className="text-3xl font-black tracking-tight">Acerque su Código QR</h2>
+                                <p className="text-slate-400 max-w-xs mx-auto text-sm leading-relaxed">
+                                    Coloque su credencial frente a la cámara para iniciar el registro automático.
+                                </p>
                             </div>
                         </motion.div>
                     )}
