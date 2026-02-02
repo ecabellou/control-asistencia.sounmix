@@ -101,26 +101,45 @@ const Employees = () => {
         if (!qrEmployee) return;
 
         try {
-            // Usamos un canvas oculto para generar una imagen de alta calidad con el diseño elegante
+            // Canvas vertical optimizado para celular
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            canvas.width = 1200;
-            canvas.height = 630; // Formato horizontal premium
+            canvas.width = 630;
+            canvas.height = 1120; // Formato vertical tipo tarjeta ID
 
             // Background - Gradient elegante
-            const gradient = ctx.createLinearGradient(0, 0, 1200, 630);
+            const gradient = ctx.createLinearGradient(0, 0, 0, 1120);
             gradient.addColorStop(0, '#0f172a'); // slate-900
             gradient.addColorStop(1, '#1e293b'); // slate-800
             ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, 1200, 630);
+            ctx.fillRect(0, 0, 630, 1120);
 
             // Adornos - Círculos sutiles
             ctx.beginPath();
-            ctx.arc(1100, 100, 300, 0, Math.PI * 2);
+            ctx.arc(500, 100, 250, 0, Math.PI * 2);
             ctx.fillStyle = 'rgba(37, 99, 235, 0.1)';
             ctx.fill();
 
-            // Dibujar el QR real
+            ctx.beginPath();
+            ctx.arc(100, 900, 200, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(37, 99, 235, 0.08)';
+            ctx.fill();
+
+            // Header con branding
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 32px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('SOUNDMIX SPA', 315, 80);
+
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.font = '500 16px Inter, sans-serif';
+            ctx.fillText('CREDENCIAL DIGITAL', 315, 115);
+
+            // Separador superior
+            ctx.fillStyle = '#2563eb';
+            ctx.fillRect(165, 140, 300, 4);
+
+            // Dibujar el QR centrado
             const qrCanvasHidden = document.querySelector('.qr-canvas-hidden canvas');
             if (qrCanvasHidden) {
                 // Sombra para el QR
@@ -129,7 +148,7 @@ const Employees = () => {
 
                 // Fondo blanco redondeado para el QR
                 ctx.fillStyle = '#ffffff';
-                const r = 40, x = 60, y = 115, w = 400, h = 400;
+                const r = 30, x = 115, y = 200, w = 400, h = 400;
                 ctx.beginPath();
                 ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
                 ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
@@ -139,30 +158,46 @@ const Employees = () => {
                 ctx.fill();
 
                 ctx.shadowBlur = 0;
-                ctx.drawImage(qrCanvasHidden, 85, 140, 350, 350);
+                ctx.drawImage(qrCanvasHidden, 140, 225, 350, 350);
             }
 
-            // Textos
+            // Información del trabajador
             ctx.fillStyle = '#ffffff';
-            ctx.font = '900 60px Inter, system-ui, sans-serif';
-            ctx.fillText(qrEmployee.full_name.toUpperCase(), 520, 280);
+            ctx.font = '900 42px Inter, system-ui, sans-serif';
+            ctx.textAlign = 'center';
 
-            ctx.fillStyle = '#94a3b8'; // slate-400
-            ctx.font = '500 35px monospace';
-            ctx.fillText(qrEmployee.rut, 520, 340);
+            // Dividir nombre si es muy largo
+            const maxWidth = 550;
+            const words = qrEmployee.full_name.toUpperCase().split(' ');
+            let line = '';
+            let y = 680;
+
+            for (let i = 0; i < words.length; i++) {
+                const testLine = line + words[i] + ' ';
+                const metrics = ctx.measureText(testLine);
+                if (metrics.width > maxWidth && i > 0) {
+                    ctx.fillText(line.trim(), 315, y);
+                    line = words[i] + ' ';
+                    y += 50;
+                } else {
+                    line = testLine;
+                }
+            }
+            ctx.fillText(line.trim(), 315, y);
+
+            // RUT
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '500 32px monospace';
+            ctx.fillText(qrEmployee.rut, 315, y + 60);
 
             // Separador
-            ctx.fillStyle = '#2563eb'; // blue-600
-            ctx.fillRect(520, 380, 100, 8);
+            ctx.fillStyle = '#2563eb';
+            ctx.fillRect(215, y + 90, 200, 6);
 
-            // Branding
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 30px Inter, sans-serif';
-            ctx.fillText('SOUNDMIX SPA', 520, 450);
-
+            // Footer
             ctx.fillStyle = 'rgba(255,255,255,0.4)';
-            ctx.font = '500 20px Inter, sans-serif';
-            ctx.fillText('REGISTRO DE ASISTENCIA BIOMÉTRICO', 520, 485);
+            ctx.font = '500 18px Inter, sans-serif';
+            ctx.fillText('REGISTRO DE ASISTENCIA BIOMÉTRICO', 315, y + 140);
 
             // Convertir y Compartir
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -366,37 +401,40 @@ const Employees = () => {
                         animate={{ scale: 1, opacity: 1 }}
                         className="w-full max-w-2xl bg-white rounded-[2.5rem] overflow-hidden shadow-2xl"
                     >
-                        {/* Vista Previa de la Tarjeta Elegante (Horizontal) */}
-                        <div className="relative p-1 bg-gradient-to-br from-slate-800 to-slate-900 overflow-hidden">
+                        {/* Vista Previa de la Tarjeta Elegante (Vertical) */}
+                        <div className="relative p-1 bg-gradient-to-b from-slate-800 to-slate-900 overflow-hidden">
 
-                            <div className="flex flex-col md:flex-row items-center p-8 md:p-12 gap-8 relative z-10">
+                            <div className="flex flex-col items-center p-8 gap-6 relative z-10">
+                                {/* Header */}
+                                <div className="text-center space-y-1">
+                                    <p className="text-lg font-bold text-white uppercase tracking-widest">SoundMix SpA</p>
+                                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em]">Credencial Digital</p>
+                                    <div className="h-0.5 w-32 bg-blue-500 rounded-full mx-auto mt-2"></div>
+                                </div>
+
                                 {/* Zona QR */}
-                                <div className="bg-white p-6 rounded-[2rem] shadow-2xl transform -rotate-2 hover:rotate-0 transition-transform duration-500">
-                                    <QRCodeCanvas value={qrValue} size={180} level="H" />
+                                <div className="bg-white p-6 rounded-[2rem] shadow-2xl transform hover:scale-105 transition-transform duration-500">
+                                    <QRCodeCanvas value={qrValue} size={200} level="H" />
                                 </div>
 
                                 {/* Info Trabajador */}
-                                <div className="text-center md:text-left flex-1 space-y-4">
+                                <div className="text-center space-y-3">
                                     <div className="space-y-1">
-                                        <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em]">Credencial Digital</p>
-                                        <h3 className="text-3xl font-black text-white leading-tight tracking-tighter">
+                                        <h3 className="text-2xl font-black text-white leading-tight tracking-tighter">
                                             {qrEmployee?.full_name}
                                         </h3>
-                                        <p className="text-lg font-mono text-slate-400">{qrEmployee?.rut}</p>
+                                        <p className="text-base font-mono text-slate-400">{qrEmployee?.rut}</p>
                                     </div>
 
-                                    <div className="h-1 w-12 bg-blue-500 rounded-full mx-auto md:mx-0"></div>
+                                    <div className="h-1 w-16 bg-blue-500 rounded-full mx-auto"></div>
 
-                                    <div>
-                                        <p className="text-sm font-bold text-slate-300 uppercase tracking-widest">SoundMix SpA</p>
-                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Asistencia Biométrica</p>
-                                    </div>
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Asistencia Biométrica</p>
                                 </div>
                             </div>
 
                             {/* Elementos decorativos de fondo */}
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
-                            <div className="absolute bottom-0 left-0 w-48 h-48 bg-slate-700/20 rounded-full blur-2xl -ml-24 -mb-24"></div>
+                            <div className="absolute top-0 right-0 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl -mr-24 -mt-24"></div>
+                            <div className="absolute bottom-0 left-0 w-40 h-40 bg-slate-700/20 rounded-full blur-2xl -ml-20 -mb-20"></div>
                         </div>
 
                         {/* Botones de acción */}
