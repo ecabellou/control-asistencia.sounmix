@@ -455,6 +455,7 @@ const Reports = () => {
                                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Colaborador</th>
                                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Fecha</th>
                                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Entrada/Salida</th>
+                                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Colación</th>
                                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Horas</th>
                                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Evidencias</th>
                             </tr>
@@ -482,6 +483,9 @@ const Reports = () => {
                                             <ArrowRight size={12} className="text-slate-300" />
                                             <span className="bg-red-100 text-red-700 font-black px-2 py-1 rounded-lg text-[10px] border border-red-200">{log.exitTime}</span>
                                         </div>
+                                    </td>
+                                    <td className="px-6 py-6 text-center text-[10px] font-bold text-slate-500">
+                                        {log.lunchStart !== '--:--' ? `${log.lunchStart} - ${log.lunchEnd}` : 'Sin registro'}
                                     </td>
                                     <td className="px-6 py-6 text-center">
                                         <p className="font-black text-slate-800 text-sm">{(log.totalMinutes / 60).toFixed(1)}h</p>
