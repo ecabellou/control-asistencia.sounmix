@@ -24,16 +24,20 @@
     "helmet": "^8.1.0",
     "html5-qrcode": "^2.3.8",
     "jsonwebtoken": "^9.0.3",
+    "jspdf": "^4.0.0",
+    "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.563.0",
     "morgan": "^1.10.1",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^6.30.3",
+    "react-select": "^5.10.2",
     "regenerate-unicode-properties": "^10.2.2",
     "sqlite3": "^5.1.7",
     "tailwindcss": "^4.1.18",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
