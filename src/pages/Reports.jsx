@@ -204,12 +204,28 @@ const Reports = () => {
         }
     };
 
+    const urlToBase64 = async (url) => {
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (e) {
+            console.error("Error convirtiendo imagen:", e);
+            return null;
+        }
+    };
+
     const exportToPDF = async () => {
         setDownloading(true);
-        console.log("Iniciando generación de PDF...");
+        console.log("Iniciando generación de PDF con evidencias...");
         try {
             if (!logs || logs.length === 0) {
-                alert("No hay datos cargados para exportar. Por favor, asegúrese de que haya registros visibles en la tabla.");
+                alert("No hay datos cargados para exportar.");
                 setDownloading(false);
                 return;
             }
@@ -218,16 +234,16 @@ const Reports = () => {
 
             // Título y Encabezado
             doc.setFontSize(20);
-            doc.setTextColor(30, 41, 59); // Slate 800
+            doc.setTextColor(30, 41, 59);
             doc.text("REGISTRO DE ASISTENCIA SOUNMIX", 14, 20);
 
             doc.setFontSize(10);
-            doc.setTextColor(100, 116, 139); // Slate 500
+            doc.setTextColor(100, 116, 139);
             doc.text(`Periodo: ${dateRange.start} al ${dateRange.end}`, 14, 28);
-            doc.text(`Empresa: SounMix SpA | Reporte Legal DT`, 14, 33);
+            doc.text(`Empresa: SounMix SpA | Reporte de Evidencia de Asistencia`, 14, 33);
             doc.text(`Fecha Emisión: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 38);
 
-            // Preparar Datos de la Tabla
+            // Tabla Principal
             const tableColumn = ["Fecha", "Trabajador", "RUT", "Entrada", "Salida", "Hrs Trab.", "Extras"];
             const tableRows = logs.map(log => [
                 log.date || '-',
@@ -239,50 +255,66 @@ const Reports = () => {
                 `${((log.overtime || 0) / 60).toFixed(1)}h`
             ]);
 
-            console.log("Generando tabla autotable...");
             autoTable(doc, {
                 head: [tableColumn],
                 body: tableRows,
                 startY: 45,
                 theme: 'striped',
-                headStyles: {
-                    fillColor: [37, 99, 235], // Blue 600
-                    textColor: [255, 255, 255],
-                    fontSize: 9,
-                    fontStyle: 'bold'
-                },
-                styles: {
-                    fontSize: 8,
-                    cellPadding: 3
-                },
-                columnStyles: {
-                    0: { cellWidth: 25 },
-                    1: { cellWidth: 'auto' },
-                    2: { cellWidth: 30 }
-                },
-                didDrawPage: (data) => {
-                    // Footer por página
-                    doc.setFontSize(8);
-                    const pgCount = doc.internal.getNumberOfPages();
-                    doc.text(`Página ${pgCount}`, data.settings.margin.left, doc.internal.pageSize.height - 10);
-                }
+                headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontSize: 9 },
+                styles: { fontSize: 8 }
             });
 
-            const finalY = (doc).lastAutoTable.finalY + 15;
+            // SECCIÓN DE ANEXO: EVIDENCIAS (FOTOS)
+            if (logs.some(l => l.photos.length > 0)) {
+                doc.addPage();
+                doc.setFontSize(16);
+                doc.setTextColor(30, 41, 59);
+                doc.text("ANEXO: EVIDENCIA FOTOGRÁFICA Y VALIDACIÓN", 14, 20);
+
+                let currentY = 30;
+
+                for (const log of logs) {
+                    if (log.photos.length === 0) continue;
+
+                    if (currentY > 230) {
+                        doc.addPage();
+                        currentY = 20;
+                    }
+
+                    doc.setFontSize(10);
+                    doc.setTextColor(51, 65, 85);
+                    doc.text(`${log.date} - ${log.employee?.full_name}`, 14, currentY);
+                    currentY += 5;
+
+                    // Dibujar fotos del día
+                    let xPos = 14;
+                    for (const photo of log.photos) {
+                        const base64 = await urlToBase64(photo.url);
+                        if (base64) {
+                            doc.addImage(base64, 'JPEG', xPos, currentY, 35, 35);
+                            doc.setFontSize(6);
+                            doc.text(photo.type, xPos, currentY + 38);
+                            xPos += 40;
+                        }
+                    }
+                    currentY += 45;
+                }
+            }
+
+            // Firma Final
+            const finalPage = doc.internal.getNumberOfPages();
+            doc.setPage(finalPage);
+            const finalY = doc.internal.pageSize.height - 40;
             doc.setFontSize(9);
-            doc.setTextColor(30, 41, 59);
-            doc.text("__________________________", 14, finalY + 20);
-            doc.text("Firma del Trabajador", 14, finalY + 25);
+            doc.text("__________________________", 14, finalY);
+            doc.text("Firma del Trabajador", 14, finalY + 5);
+            doc.text("__________________________", 120, finalY);
+            doc.text("Firma Empleador / Sello", 120, finalY + 5);
 
-            doc.text("__________________________", 120, finalY + 20);
-            doc.text("Firma Empleador / Sello", 120, finalY + 25);
-
-            console.log("Guardando archivo...");
-            doc.save(`Reporte_Asistencia_${dateRange.start}_${dateRange.end}.pdf`);
-            console.log("PDF generado con éxito.");
+            doc.save(`Reporte_Evidencias_${dateRange.start}_${dateRange.end}.pdf`);
         } catch (err) {
-            console.error('Error detallado PDF:', err);
-            alert("No se pudo generar el PDF. Detalle técnico: " + (err.message || "Error desconocido"));
+            console.error('Error detallado PDF con Imágenes:', err);
+            alert("Error al procesar el reporte con imágenes.");
         } finally {
             setDownloading(false);
         }
