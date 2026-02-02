@@ -249,9 +249,14 @@ const Kiosk = () => {
     const confirmMarking = async () => {
         setStatus('submitting');
         try {
-            await axios.post('https://twyndowkjummyjoouqnf.supabase.co/functions/v1/process-attendance', {
-                employeeId: scannedData.id, lat: location?.lat, lng: location?.lng, timestamp: new Date().toISOString(), photo
-            }, { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` } });
+            // Llamar al backend Express en lugar de Edge Function
+            const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+            await axios.post(`${backendUrl}/api/attendance/scan`, {
+                employeeId: scannedData.id,
+                lat: location?.lat || 0,
+                lng: location?.lng || 0,
+                timestamp: new Date().toISOString()
+            });
             setStatus('success');
             setTimeout(() => {
                 setStatus('idle');
@@ -259,7 +264,8 @@ const Kiosk = () => {
                 wakeUp();
             }, 6000);
         } catch (err) {
-            setError("Error al registrar");
+            console.error('Error al registrar:', err);
+            setError(err.response?.data?.error || "Error al registrar");
             setStatus('error');
             setTimeout(() => {
                 setStatus('idle');
