@@ -20,7 +20,7 @@ import { format, startOfMonth, endOfMonth, parseISO, differenceInMinutes, isWith
 import { es } from 'date-fns/locale';
 import Select from 'react-select';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -29,6 +29,7 @@ const Reports = () => {
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [downloading, setDownloading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState(null);
 
     // Filtros
     const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -76,6 +77,7 @@ const Reports = () => {
 
     const fetchReports = async () => {
         setLoading(true);
+        setErrorMsg(null);
         try {
             let query = supabase
                 .from('attendance_logs')
@@ -101,6 +103,7 @@ const Reports = () => {
             calculateStats(processedLogs);
         } catch (err) {
             console.error('Error fetching logs:', err);
+            setErrorMsg("Error al cargar los datos. Reintente.");
         } finally {
             setLoading(false);
         }
@@ -160,7 +163,7 @@ const Reports = () => {
                 lunchStart: lStart ? format(parseISO(lStart.timestamp), 'HH:mm') : '--:--',
                 lunchEnd: lEnd ? format(parseISO(lEnd.timestamp), 'HH:mm') : '--:--',
                 totalMinutes,
-                overtime: Math.max(0, totalMinutes - (group.employee?.weekly_hours_agreed / 5 * 60))
+                overtime: Math.max(0, totalMinutes - ((group.employee?.weekly_hours_agreed || 40) / 5 * 60))
             };
         });
     };
@@ -176,79 +179,84 @@ const Reports = () => {
     };
 
     const exportToExcel = () => {
-        const worksheetData = logs.map(log => ({
-            'Fecha': log.date,
-            'Trabajador': log.employee?.full_name,
-            'RUT': log.employee?.rut,
-            'Entrada': log.entryTime,
-            'Inicio Colación': log.lunchStart,
-            'Término Colación': log.lunchEnd,
-            'Salida': log.exitTime,
-            'Minutos Trabajados': log.totalMinutes,
-            'Horas Extra (min)': log.overtime,
-            'Ubicación': log.location ? `${log.location.lat}, ${log.location.lng}` : 'N/A'
-        }));
+        try {
+            if (logs.length === 0) return alert("No hay datos para exportar");
+            const worksheetData = logs.map(log => ({
+                'Fecha': log.date,
+                'Trabajador': log.employee?.full_name,
+                'RUT': log.employee?.rut,
+                'Entrada': log.entryTime,
+                'Inicio Colación': log.lunchStart,
+                'Término Colación': log.lunchEnd,
+                'Salida': log.exitTime,
+                'Minutos Trabajados': log.totalMinutes,
+                'Horas Extra (min)': log.overtime,
+                'Ubicación': log.location ? `${log.location.lat}, ${log.location.lng}` : 'N/A'
+            }));
 
-        const ws = XLSX.utils.json_to_sheet(worksheetData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Reporte Asistencia");
-        XLSX.writeFile(wb, `Reporte_Asistencia_${dateRange.start}_${dateRange.end}.xlsx`);
+            const ws = XLSX.utils.json_to_sheet(worksheetData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Reporte Asistencia");
+            XLSX.writeFile(wb, `Reporte_Asistencia_${dateRange.start}_${dateRange.end}.xlsx`);
+        } catch (e) {
+            console.error(e);
+            alert("Error al generar Excel");
+        }
     };
 
     const exportToPDF = async () => {
         setDownloading(true);
-        const doc = new jsPDF();
-        const pageWidth = doc.internal.pageSize.getWidth();
+        try {
+            if (logs.length === 0) {
+                alert("No hay datos para este periodo");
+                setDownloading(false);
+                return;
+            }
 
-        // Header
-        doc.setFontSize(18);
-        doc.setTextColor(40);
-        doc.text("REPORTE ASISTENCIA LEGAL - SOUNMIX", 14, 22);
+            const doc = new jsPDF();
 
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text(`Periodo: ${dateRange.start} al ${dateRange.end}`, 14, 30);
-        doc.text(`Generado: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 35);
+            // Header
+            doc.setFontSize(18);
+            doc.setTextColor(40);
+            doc.text("REPORTE ASISTENCIA LEGAL - SOUNMIX", 14, 22);
 
-        const tableColumn = ["Fecha", "Trabajador", "Entrada", "Salida", "Hrs Trab.", "Extras"];
-        const tableRows = logs.map(log => [
-            log.date,
-            log.employee?.full_name,
-            log.entryTime,
-            log.exitTime,
-            `${(log.totalMinutes / 60).toFixed(1)}h`,
-            `${(log.overtime / 60).toFixed(1)}h`
-        ]);
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(`Periodo: ${dateRange.start} al ${dateRange.end}`, 14, 30);
+            doc.text(`Generado: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 35);
 
-        doc.autoTable({
-            head: [tableColumn],
-            body: tableRows,
-            startY: 45,
-            theme: 'grid',
-            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-            styles: { fontSize: 8 }
-        });
+            const tableColumn = ["Fecha", "Trabajador", "Entrada", "Salida", "Hrs Trab.", "Extras"];
+            const tableRows = logs.map(log => [
+                log.date,
+                log.employee?.full_name,
+                log.entryTime,
+                log.exitTime,
+                `${(log.totalMinutes / 60).toFixed(1)}h`,
+                `${(log.overtime / 60).toFixed(1)}h`
+            ]);
 
-        // Add photos section if single employee selected
-        if (selectedEmployee && selectedEmployee.value !== 'all' && logs.length > 0) {
-            let yPos = doc.lastAutoTable.finalY + 20;
-            doc.setFontSize(14);
-            doc.text("REGISTRO FOTOGRÁFICO Y GEOLOCALIZACIÓN", 14, yPos);
-            yPos += 10;
-
-            doc.setFontSize(8);
-            logs.forEach((log, idx) => {
-                if (yPos > 250) {
-                    doc.addPage();
-                    yPos = 20;
-                }
-                doc.text(`${log.date}: ${log.employee?.full_name} - Loc: ${log.location ? log.location.lat + ',' + log.location.lng : 'N/A'}`, 14, yPos);
-                yPos += 5;
+            autoTable(doc, {
+                head: [tableColumn],
+                body: tableRows,
+                startY: 45,
+                theme: 'grid',
+                headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+                styles: { fontSize: 8 }
             });
-        }
 
-        doc.save(`Reporte_DT_${dateRange.start}_${dateRange.end}.pdf`);
-        setDownloading(false);
+            // Footer / Legal section
+            let yPos = doc.lastAutoTable?.finalY + 15 || 250;
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text("Este reporte constituye un registro legal de asistencia según la normativa vigente en Chile.", 14, yPos);
+
+            doc.save(`Reporte_DT_${dateRange.start}_${dateRange.end}.pdf`);
+        } catch (err) {
+            console.error('Error generating PDF:', err);
+            alert("Error al generar el PDF. Por favor intente de nuevo.");
+        } finally {
+            setDownloading(false);
+        }
     };
 
     return (
