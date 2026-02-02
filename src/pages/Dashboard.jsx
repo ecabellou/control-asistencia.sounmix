@@ -33,13 +33,36 @@ const Dashboard = () => {
     const [currentTime, setCurrentTime] = useState(new Date());
 
     useEffect(() => {
-        const timer = setInterval(() => setCurrentTime(new Date()), 60000);
-        fetchDashboardData();
-        return () => clearInterval(timer);
+        // Ticker to refresh accumulated hours every minute
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+            // We refresh the calculations every minute to update the "Hours Worked" timers
+            fetchDashboardData(false);
+        }, 60000);
+
+        fetchDashboardData(true);
+
+        // Supabase Realtime: Listen for ANY changes in attendance_logs
+        // This is ultra low cost and provides "magic" live updates
+        const channel = supabase
+            .channel('dashboard-realtime')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'attendance_logs'
+            }, () => {
+                fetchDashboardData(false); // Silent refresh
+            })
+            .subscribe();
+
+        return () => {
+            clearInterval(timer);
+            supabase.removeChannel(channel);
+        };
     }, []);
 
-    const fetchDashboardData = async () => {
-        setLoading(true);
+    const fetchDashboardData = async (showLoading = true) => {
+        if (showLoading) setLoading(true);
         try {
             const today = startOfDay(new Date()).toISOString();
 
@@ -134,10 +157,15 @@ const Dashboard = () => {
         <div className="p-4 md:p-8 bg-slate-50 min-h-screen font-sans">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
                 <div>
-                    <h1 className="text-3xl font-black tracking-tighter text-slate-800 flex items-center gap-3">
+                    <div className="flex items-center gap-3">
                         <Activity className="text-blue-600 animate-pulse" size={32} />
-                        MONITOR EN TIEMPO REAL
-                    </h1>
+                        <h1 className="text-3xl font-black tracking-tighter text-slate-800">
+                            MONITOR EN TIEMPO REAL
+                        </h1>
+                        <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-red-200 uppercase tracking-tighter">
+                            LIVE
+                        </span>
+                    </div>
                     <p className="text-slate-500 font-medium text-sm mt-1">
                         Control de asistencia en vivo - {format(currentTime, "MMMM dd, yyyy | HH:mm", { locale: es })}
                     </p>

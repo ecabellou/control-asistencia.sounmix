@@ -15,29 +15,34 @@ exports.scanQR = async (req, res) => {
     if (empError || !employee) return res.status(404).json({ error: 'Trabajador no encontrado' });
 
     // 2. Determine Event Type (State Machine)
-    const today = timestamp.split('T')[0];
-    const { data: logs, error: logsError } = await supabase
+    // Instead of looking at today's logs only, we look at the last log to support overnight shifts.
+    const { data: lastLogs, error: logsError } = await supabase
         .from('attendance_logs')
-        .select('event_type')
+        .select('event_type, timestamp')
         .eq('employee_id', employeeId)
-        .gte('timestamp', `${today}T00:00:00Z`)
-        .lte('timestamp', `${today}T23:59:59Z`)
-        .order('timestamp', { ascending: true });
+        .order('timestamp', { ascending: false })
+        .limit(1);
 
     if (logsError) return res.status(500).json({ error: 'Error al consultar historial' });
 
-    const logCount = logs.length;
-    let eventType = '';
+    const lastLog = lastLogs?.[0];
+    let eventType = 'ENTRY'; // Default if no logs or session closed/expired
 
-    switch (logCount) {
-        case 0: eventType = 'ENTRY'; break;
-        case 1: eventType = 'LUNCH_START'; break;
-        case 2: eventType = 'LUNCH_END'; break;
-        case 3: eventType = 'EXIT'; break;
-        default:
-            return res.status(400).json({
-                error: 'Jornada ya completada para hoy. Ya se registraron las 4 marcas obligatorias.'
-            });
+    if (lastLog) {
+        const lastTimestamp = new Date(lastLog.timestamp);
+        const currentTimestamp = new Date(timestamp);
+        const hoursSinceLast = (currentTimestamp - lastTimestamp) / (1000 * 60 * 60);
+
+        // If the last log was more than 16 hours ago, we assume it's a new day/shift
+        // regardless of if they forgot to check out.
+        if (hoursSinceLast < 16) {
+            switch (lastLog.event_type) {
+                case 'ENTRY': eventType = 'LUNCH_START'; break;
+                case 'LUNCH_START': eventType = 'LUNCH_END'; break;
+                case 'LUNCH_END': eventType = 'EXIT'; break;
+                case 'EXIT': eventType = 'ENTRY'; break;
+            }
+        }
     }
 
     // 3. Generate Security Hash
@@ -60,7 +65,7 @@ exports.scanQR = async (req, res) => {
     if (saveError) return res.status(500).json({ error: 'Error al guardar la marca' });
 
     // 5. Trigger Calculation
-    await AttendanceCalculator.recalculateDay(employeeId, today);
+    await AttendanceCalculator.recalculateDay(employeeId);
 
     // 6. Generate Ticket Response
     const companyInfo = { name: 'Empresa Demo S.A.', rut: '76.123.456-K' };

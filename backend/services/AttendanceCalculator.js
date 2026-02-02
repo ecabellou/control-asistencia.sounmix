@@ -3,65 +3,81 @@ const { differenceInMinutes, parseISO } = require('date-fns');
 
 class AttendanceCalculator {
     /**
-     * Recalculates the working_day record for a specific date and employee.
+     * Recalculates working_day records based on the most recent logs.
+     * This version is session-aware and handles overnight shifts.
      */
-    static async recalculateDay(employeeId, date) {
-        // Get all logs for this employee on this date
-        const { data: logs, error: logsError } = await supabase
+    static async recalculateDay(employeeId) {
+        // Fetch the last 15 logs to ensure we have enough context for the current session
+        const { data: rawLogs, error: logsError } = await supabase
             .from('attendance_logs')
             .select('*')
             .eq('employee_id', employeeId)
-            .gte('timestamp', `${date}T00:00:00Z`)
-            .lte('timestamp', `${date}T23:59:59Z`)
-            .order('timestamp', { ascending: true });
+            .order('timestamp', { ascending: true })
+            .limit(20);
 
         if (logsError) throw logsError;
+        if (!rawLogs || rawLogs.length === 0) return;
 
-        let entry = null;
-        let lunchStart = null;
-        let lunchEnd = null;
-        let exit = null;
+        // Group logs into logical sessions (Entry -> [Lunches] -> Exit)
+        const sessions = [];
+        let currentSession = null;
 
-        logs.forEach(log => {
-            switch (log.event_type) {
-                case 'ENTRY': entry = log.timestamp; break;
-                case 'LUNCH_START': lunchStart = log.timestamp; break;
-                case 'LUNCH_END': lunchEnd = log.timestamp; break;
-                case 'EXIT': exit = log.timestamp; break;
+        rawLogs.forEach(log => {
+            const type = log.event_type.toUpperCase();
+            const isEntry = type === 'ENTRY' || type === 'ENTRADA';
+
+            // Start a new session if it's an ENTRY or if we don't have one
+            // We also check for "stale" sessions (e.g. > 20 hours) to avoid grouping unrelated logs
+            const isStale = currentSession && (new Date(log.timestamp) - new Date(currentSession.entry)) > (20 * 60 * 60 * 1000);
+
+            if (isEntry || !currentSession || isStale) {
+                currentSession = {
+                    date: log.timestamp.split('T')[0],
+                    entry: log.timestamp,
+                    exit: null,
+                    lunchStart: null,
+                    lunchEnd: null
+                };
+                sessions.push(currentSession);
             }
+
+            if (type === 'EXIT' || type === 'SALIDA') currentSession.exit = log.timestamp;
+            else if (type === 'LUNCH_START' || type === 'INICIO COLACIÓN') currentSession.lunchStart = log.timestamp;
+            else if (type === 'LUNCH_END' || type === 'TÉRMINO COLACIÓN') currentSession.lunchEnd = log.timestamp;
         });
 
-        let lunchMinutes = 0;
-        if (lunchStart && lunchEnd) {
-            lunchMinutes = differenceInMinutes(parseISO(lunchEnd), parseISO(lunchStart));
+        // Upsert the results for the most recent session(s)
+        // We only update working_days for the sessions we processed
+        for (const session of sessions) {
+            let lunchMinutes = 0;
+            if (session.lunchStart && session.lunchEnd) {
+                lunchMinutes = differenceInMinutes(parseISO(session.lunchEnd), parseISO(session.lunchStart));
+            }
+
+            let totalMinutes = 0;
+            if (session.entry && session.exit) {
+                totalMinutes = differenceInMinutes(parseISO(session.exit), parseISO(session.entry)) - lunchMinutes;
+            }
+
+            // Cap ordinary at 9 hours (540 min)
+            const ordinaryMinutes = Math.min(totalMinutes, 540);
+            const overtimeMinutes = Math.max(0, totalMinutes - ordinaryMinutes);
+
+            await supabase
+                .from('working_days')
+                .upsert({
+                    employee_id: employeeId,
+                    date: session.date,
+                    actual_entry_time: session.entry,
+                    actual_exit_time: session.exit,
+                    lunch_minutes: lunchMinutes,
+                    ordinary_minutes: ordinaryMinutes,
+                    overtime_minutes: overtimeMinutes,
+                    status: 'PRESENT'
+                }, {
+                    onConflict: 'employee_id, date'
+                });
         }
-
-        let totalMinutes = 0;
-        if (entry && exit) {
-            totalMinutes = differenceInMinutes(parseISO(exit), parseISO(entry)) - lunchMinutes;
-        }
-
-        // Chilean law: 40 hours is the standard. Daily ordinary is usually around 8-9 hours depending on the distribution.
-        // For simplicity, we cap daily ordinary at 9 hours (540 min) and the rest is overtime.
-        const ordinaryMinutes = Math.min(totalMinutes, 540);
-        const overtimeMinutes = Math.max(0, totalMinutes - ordinaryMinutes);
-
-        const { error: upsertError } = await supabase
-            .from('working_days')
-            .upsert({
-                employee_id: employeeId,
-                date: date,
-                actual_entry_time: entry,
-                actual_exit_time: exit,
-                lunch_minutes: lunchMinutes,
-                ordinary_minutes: ordinaryMinutes,
-                overtime_minutes: overtimeMinutes,
-                status: 'PRESENT'
-            }, {
-                onConflict: 'employee_id, date'
-            });
-
-        if (upsertError) throw upsertError;
     }
 
     /**

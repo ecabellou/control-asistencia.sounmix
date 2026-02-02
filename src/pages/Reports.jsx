@@ -114,15 +114,32 @@ const Reports = () => {
     };
 
     const processAttendanceData = (rawLogs) => {
-        const groups = {};
-        rawLogs.forEach(log => {
-            const dateStr = format(parseISO(log.timestamp), 'yyyy-MM-dd');
-            const key = `${dateStr}_${log.employee_id}`;
+        // First, sort logs by employee and then by timestamp ascending
+        const sortedLogs = [...rawLogs].sort((a, b) => {
+            if (a.employee_id !== b.employee_id) return a.employee_id.localeCompare(b.employee_id);
+            return new Date(a.timestamp) - new Date(b.timestamp);
+        });
 
-            if (!groups[key]) {
-                groups[key] = {
-                    date: dateStr,
-                    employee_id: log.employee_id,
+        const logicalGroups = [];
+        const activeSessions = {}; // track current session per employee
+
+        sortedLogs.forEach(log => {
+            const empId = log.employee_id;
+            const event = log.event_type.toUpperCase();
+
+            // Should we start a new session or add to current?
+            // A session starts with ENTRY or if there's no active session.
+            let session = activeSessions[empId];
+
+            const isEntry = event === 'ENTRADA' || event === 'ENTRY';
+            const logDate = new Date(log.timestamp);
+
+            // If it's an entry but we have an open session, we close the old one if it's "stale" (e.g. > 16h)
+            // or if it's explicitly a new entry.
+            if (isEntry || !session) {
+                session = {
+                    date: format(logDate, 'yyyy-MM-dd'),
+                    employee_id: empId,
                     employee: log.employee,
                     entries: [],
                     exits: [],
@@ -131,16 +148,21 @@ const Reports = () => {
                     photos: [],
                     location: { lat: log.lat, lng: log.lng }
                 };
+                logicalGroups.push(session);
+                activeSessions[empId] = session;
             }
 
-            const event = log.event_type.toUpperCase();
-            if (event === 'ENTRADA' || event === 'ENTRY') groups[key].entries.push(log);
-            if (event === 'SALIDA' || event === 'EXIT') groups[key].exits.push(log);
-            if (event === 'INICIO COLACIÓN' || event === 'LUNCH_START') groups[key].lunch_starts.push(log);
-            if (event === 'TÉRMINO COLACIÓN' || event === 'LUNCH_END') groups[key].lunch_ends.push(log);
+            // Add the log to the session
+            if (isEntry) session.entries.push(log);
+            else if (event === 'SALIDA' || event === 'EXIT') {
+                session.exits.push(log);
+                delete activeSessions[empId]; // session complete
+            }
+            else if (event === 'INICIO COLACIÓN' || event === 'LUNCH_START') session.lunch_starts.push(log);
+            else if (event === 'TÉRMINO COLACIÓN' || event === 'LUNCH_END') session.lunch_ends.push(log);
 
             if (log.photo_url) {
-                groups[key].photos.push({
+                session.photos.push({
                     type: log.event_type,
                     url: log.photo_url,
                     time: format(parseISO(log.timestamp), 'HH:mm:ss'),
@@ -149,7 +171,7 @@ const Reports = () => {
             }
         });
 
-        return Object.values(groups).map(group => {
+        return logicalGroups.map(group => {
             const entry = group.entries[0];
             const exit = group.exits[0];
             const lStart = group.lunch_starts[0];
@@ -171,9 +193,9 @@ const Reports = () => {
                 lunchStart: lStart ? format(parseISO(lStart.timestamp), 'HH:mm') : '--:--',
                 lunchEnd: lEnd ? format(parseISO(lEnd.timestamp), 'HH:mm') : '--:--',
                 totalMinutes,
-                overtime: Math.max(0, totalMinutes - ((group.employee?.weekly_hours_agreed || 42) / 5 * 60))
+                overtime: Math.max(0, totalMinutes - ((group.employee?.weekly_hours_agreed || 40) / 5 * 60))
             };
-        });
+        }).sort((a, b) => new Date(b.date) - new Date(a.date));
     };
 
     const calculateStats = (data) => {
@@ -222,13 +244,15 @@ const Reports = () => {
             doc.text(`Empresa: SoundMix SpA | Reporte de Evidencia de Asistencia`, 14, 33);
             doc.text(`Fecha Emisión: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 38);
 
-            const tableColumn = ["Fecha", "Trabajador", "RUT", "Entrada", "Salida", "Hrs Trab.", "Extras"];
+            const tableColumn = ["Fecha", "Trabajador", "RUT", "Entrada", "Salida", "Ini. Col.", "Fin Col.", "Hrs Trab.", "Extras"];
             const tableRows = logs.map(log => [
                 log.date,
                 log.employee?.full_name,
                 log.employee?.rut,
                 log.entryTime,
                 log.exitTime,
+                log.lunchStart,
+                log.lunchEnd,
                 `${(log.totalMinutes / 60).toFixed(1)}h`,
                 `${(log.overtime / 60).toFixed(1)}h`
             ]);
@@ -238,35 +262,11 @@ const Reports = () => {
                 body: tableRows,
                 startY: 45,
                 theme: 'striped',
-                headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontSize: 9 },
-                styles: { fontSize: 8 }
+                headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontSize: 8 },
+                styles: { fontSize: 7, cellPadding: 2 }
             });
 
-            if (logs.some(l => l.photos.length > 0)) {
-                doc.addPage();
-                doc.setFontSize(16);
-                doc.text("ANEXO: EVIDENCIA FOTOGRÁFICA", 14, 20);
-                let currentY = 30;
-
-                for (const log of logs) {
-                    if (log.photos.length === 0) continue;
-                    if (currentY > 230) { doc.addPage(); currentY = 20; }
-                    doc.setFontSize(10);
-                    doc.text(`${log.date} - ${log.employee?.full_name}`, 14, currentY);
-                    currentY += 5;
-                    let xPos = 14;
-                    for (const photo of log.photos) {
-                        const base64 = await urlToBase64(photo.url);
-                        if (base64) {
-                            doc.addImage(base64, 'JPEG', xPos, currentY, 35, 35);
-                            doc.setFontSize(6);
-                            doc.text(photo.type, xPos, currentY + 38);
-                            xPos += 40;
-                        }
-                    }
-                    currentY += 45;
-                }
-            }
+            // Removida sección de fotografías por solicitud del usuario para ahorrar espacio
 
             const finalPage = doc.internal.getNumberOfPages();
             doc.setPage(finalPage);
@@ -277,7 +277,20 @@ const Reports = () => {
             doc.text("__________________________", 120, finalY);
             doc.text("Firma Empleador / Sello", 120, finalY + 5);
 
-            doc.save(`Reporte_SoundMix_${dateRange.start}.pdf`);
+            let filename = `Reporte_General_SoundMix_${dateRange.start}.pdf`;
+
+            // Si hay un empleado seleccionado o si todos los registros pertenecen al mismo trabajador
+            const isSingleWorker = selectedEmployee && selectedEmployee.value !== 'all';
+            const firstLog = logs[0];
+
+            if (isSingleWorker || (logs.length > 0 && logs.every(l => l.employee_id === firstLog.employee_id))) {
+                const emp = isSingleWorker ? (selectedEmployee.empData || firstLog.employee) : firstLog.employee;
+                if (emp) {
+                    filename = `${emp.full_name}_${emp.rut}.pdf`.replace(/\s+/g, '_');
+                }
+            }
+
+            doc.save(filename);
         } catch (err) {
             console.error(err);
             alert("Error al generar PDF");
@@ -288,13 +301,33 @@ const Reports = () => {
 
     const exportToExcel = () => {
         const worksheetData = logs.map(log => ({
-            'Fecha': log.date, 'Trabajador': log.employee?.full_name, 'RUT': log.employee?.rut,
-            'Entrada': log.entryTime, 'Salida': log.exitTime, 'Horas': (log.totalMinutes / 60).toFixed(1)
+            'Fecha': log.date,
+            'Trabajador': log.employee?.full_name,
+            'RUT': log.employee?.rut,
+            'Entrada': log.entryTime,
+            'Salida': log.exitTime,
+            'Ini. Colación': log.lunchStart,
+            'Fin Colación': log.lunchEnd,
+            'Horas': (log.totalMinutes / 60).toFixed(1),
+            'Horas Extras': (log.overtime / 60).toFixed(1)
         }));
+
         const ws = XLSX.utils.json_to_sheet(worksheetData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Reporte");
-        XLSX.writeFile(wb, `Reporte_Extras_${dateRange.start}.xlsx`);
+
+        let filename = `Reporte_Excel_SoundMix_${dateRange.start}.xlsx`;
+        const isSingleWorker = selectedEmployee && selectedEmployee.value !== 'all';
+        const firstLog = logs[0];
+
+        if (isSingleWorker || (logs.length > 0 && logs.every(l => l.employee_id === firstLog.employee_id))) {
+            const emp = isSingleWorker ? (selectedEmployee.empData || firstLog.employee) : firstLog.employee;
+            if (emp) {
+                filename = `${emp.full_name}_${emp.rut}.xlsx`.replace(/\s+/g, '_');
+            }
+        }
+
+        XLSX.writeFile(wb, filename);
     };
 
     return (
