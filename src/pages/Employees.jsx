@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, QrCode as QRIcon, X } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, QrCode as QRIcon, X, MessageSquare } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { supabase } from '../lib/supabase';
 
@@ -94,6 +94,42 @@ const Employees = () => {
         document.title = `Credencial - ${qrEmployee.full_name} - ${qrEmployee.rut}`;
         window.print();
         document.title = originalTitle;
+    };
+
+    const shareToWhatsApp = async () => {
+        if (!qrEmployee) return;
+
+        try {
+            const canvas = document.querySelector('canvas');
+            if (!canvas) return;
+
+            // 1. Convert Canvas to Blob
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            const file = new File([blob], `QR_${qrEmployee.full_name}.png`, { type: 'image/png' });
+
+            // 2. Check if Web Share API supports files
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: `Código QR - ${qrEmployee.full_name}`,
+                    text: `Hola ${qrEmployee.full_name}, adjunto tu código QR para el control de asistencia de SoundMix.`
+                });
+            } else {
+                // Fallback: If Web Share is not supported, we use a standard WhatsApp link 
+                // and instruct the user to copy/paste or we just download the image for them.
+                const imageUrl = canvas.toDataURL("image/png");
+                const link = document.createElement('a');
+                link.download = `QR_${qrEmployee.full_name}.png`;
+                link.href = imageUrl;
+                link.click();
+
+                const message = encodeURIComponent(`Hola ${qrEmployee.full_name}, te envío tu código QR de SoundMix. (Recuerda adjuntar la imagen que se acaba de descargar)`);
+                window.open(`https://wa.me/${qrEmployee.phone?.replace(/\D/g, '') || ''}?text=${message}`, '_blank');
+            }
+        } catch (err) {
+            console.error('Error sharing:', err);
+            alert('No se pudo compartir directamente. La imagen se descargará automáticamente.');
+        }
     };
 
     return (
@@ -278,17 +314,24 @@ const Employees = () => {
                             <p className="text-lg font-bold text-slate-900">{qrEmployee?.full_name}</p>
                             <p className="text-sm text-slate-500 font-mono">{qrEmployee?.rut}</p>
                         </div>
-                        <div className="flex space-x-4">
+                        <div className="flex flex-wrap justify-center gap-4">
                             <button
                                 onClick={handlePrint}
-                                className="bg-slate-800 text-white px-6 py-2 rounded-xl text-sm font-semibold hover:bg-slate-900 transition-all flex items-center space-x-2"
+                                className="bg-slate-800 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-900 transition-all flex items-center space-x-2 shadow-lg"
                             >
                                 <QRIcon size={16} />
                                 <span>Imprimir Credencial</span>
                             </button>
                             <button
+                                onClick={shareToWhatsApp}
+                                className="bg-green-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-700 transition-all flex items-center space-x-2 shadow-lg shadow-green-100"
+                            >
+                                <MessageSquare size={16} />
+                                <span>Compartir WhatsApp</span>
+                            </button>
+                            <button
                                 onClick={() => { setQrValue(null); setQrEmployee(null); }}
-                                className="bg-slate-100 text-slate-600 px-6 py-2 rounded-xl text-sm font-semibold hover:bg-slate-200 transition-all"
+                                className="bg-slate-100 text-slate-600 px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-200 transition-all"
                             >
                                 Cerrar
                             </button>
