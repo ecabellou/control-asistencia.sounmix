@@ -216,93 +216,93 @@ const Dashboard = () => {
                                         'border-slate-100 shadow-slate-100/50'} shadow-xl`}
                         >
                             {/* Status Badge */}
-                            <div className="absolute top-6 right-6 flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest leading-none border
-                                ${worker.state === 'ACTIVO' ? 'bg-green-50 text-green-600 border-green-100' : 
-                                  worker.state === 'COLACIÓN' ? 'bg-amber-50 text-amber-600 border-amber-100 animate-pulse' : 
-                                  'bg-slate-50 text-slate-500 border-slate-100'}`}
+                            <div className={`absolute top-6 right-6 flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest leading-none border
+                                ${worker.state === 'ACTIVO' ? 'bg-green-50 text-green-600 border-green-100' :
+                                    worker.state === 'COLACIÓN' ? 'bg-amber-50 text-amber-600 border-amber-100 animate-pulse' :
+                                        'bg-slate-50 text-slate-500 border-slate-100'}`}
                             >
                                 <span className={`w-1.5 h-1.5 rounded-full ${worker.state === 'ACTIVO' ? 'bg-green-500' : worker.state === 'COLACIÓN' ? 'bg-amber-500' : 'bg-slate-400'}`} />
                                 {worker.state}
                             </div>
 
                             <div className="flex flex-col h-full justify-between gap-6">
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center font-black text-slate-400 text-sm">
-                                        {worker.full_name?.substring(0, 2).toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-slate-800 text-lg tracking-tight truncate max-w-[140px]">{worker.full_name}</h3>
-                                        <p className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">{worker.rut}</p>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-50 text-center">
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-[.2em] mb-1">Entrada</p>
-                                        <p className="font-bold text-slate-700 text-xs">{worker.entryTime || '--:--'}</p>
-                                    </div>
-                                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-50 text-center">
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-[.2em] mb-1">Salida</p>
-                                        <p className="font-bold text-slate-700 text-xs">{worker.exitTime || '--:--'}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4 pt-4 border-t border-slate-50">
-                                <div className="flex justify-between items-end">
-                                    <div className="space-y-1">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                                            <Timer size={10} /> Horas Hoy
-                                        </p>
-                                        <p className="text-2xl font-black text-slate-800 tracking-tighter">
-                                            {worker.accumulatedHours}<span className="text-xs font-medium text-slate-400 ml-1">hrs</span>
-                                        </p>
-                                    </div>
-                                    {worker.overtime > 0 && (
-                                        <div className="text-right">
-                                            <p className="text-[8px] font-black text-red-400 uppercase tracking-widest">Extra</p>
-                                            <p className="text-sm font-black text-red-500">+{worker.overtime}h</p>
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center font-black text-slate-400 text-sm">
+                                            {worker.full_name?.substring(0, 2).toUpperCase()}
                                         </div>
-                                    )}
+                                        <div>
+                                            <h3 className="font-bold text-slate-800 text-lg tracking-tight truncate max-w-[140px]">{worker.full_name}</h3>
+                                            <p className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">{worker.rut}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-50 text-center">
+                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-[.2em] mb-1">Entrada</p>
+                                            <p className="font-bold text-slate-700 text-xs">{worker.entryTime || '--:--'}</p>
+                                        </div>
+                                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-50 text-center">
+                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-[.2em] mb-1">Salida</p>
+                                            <p className="font-bold text-slate-700 text-xs">{worker.exitTime || '--:--'}</p>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                {/* Progress Bar Simple */}
-                                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${Math.min(100, (parseFloat(worker.accumulatedHours) / 8) * 100)}%` }}
-                                        className={`h-full ${parseFloat(worker.accumulatedHours) >= 8 ? 'bg-blue-600' : 'bg-green-500'}`}
-                                    />
+                                <div className="space-y-4 pt-4 border-t border-slate-50">
+                                    <div className="flex justify-between items-end">
+                                        <div className="space-y-1">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                                                <Timer size={10} /> Horas Hoy
+                                            </p>
+                                            <p className="text-2xl font-black text-slate-800 tracking-tighter">
+                                                {worker.accumulatedHours}<span className="text-xs font-medium text-slate-400 ml-1">hrs</span>
+                                            </p>
+                                        </div>
+                                        {worker.overtime > 0 && (
+                                            <div className="text-right">
+                                                <p className="text-[8px] font-black text-red-400 uppercase tracking-widest">Extra</p>
+                                                <p className="text-sm font-black text-red-500">+{worker.overtime}h</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Progress Bar Simple */}
+                                    <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${Math.min(100, (parseFloat(worker.accumulatedHours) / 8) * 100)}%` }}
+                                            className={`h-full ${parseFloat(worker.accumulatedHours) >= 8 ? 'bg-blue-600' : 'bg-green-500'}`}
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
                         </motion.div>
                     ))}
-            </AnimatePresence>
-        </div>
+                </AnimatePresence>
+            </div>
 
             {
-        loading && filteredWorkers.length === 0 && (
-            <div className="py-24 flex flex-col items-center justify-center text-slate-300">
-                <Loader2 className="animate-spin text-blue-600" size={48} />
-                <p className="mt-4 font-black text-sm uppercase tracking-widest animate-pulse">Sincronizando estados...</p>
-            </div>
-        )
-    }
+                loading && filteredWorkers.length === 0 && (
+                    <div className="py-24 flex flex-col items-center justify-center text-slate-300">
+                        <Loader2 className="animate-spin text-blue-600" size={48} />
+                        <p className="mt-4 font-black text-sm uppercase tracking-widest animate-pulse">Sincronizando estados...</p>
+                    </div>
+                )
+            }
 
-    {
-        !loading && filteredWorkers.length === 0 && (
-            <div className="py-24 text-center">
-                <Users size={64} className="mx-auto mb-4 opacity-5" />
-                <p className="font-black text-slate-300 uppercase tracking-widest">No hay trabajadores para mostrar</p>
-            </div>
-        )
-    }
+            {
+                !loading && filteredWorkers.length === 0 && (
+                    <div className="py-24 text-center">
+                        <Users size={64} className="mx-auto mb-4 opacity-5" />
+                        <p className="font-black text-slate-300 uppercase tracking-widest">No hay trabajadores para mostrar</p>
+                    </div>
+                )
+            }
 
-    <div className="mt-12 flex items-center justify-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-[.3em]">
-        <ShieldCheck size={14} className="text-blue-400" /> Dashboard de Monitoreo Directo | SounMix SpA v2.8
-    </div>
+            <div className="mt-12 flex items-center justify-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-[.3em]">
+                <ShieldCheck size={14} className="text-blue-400" /> Dashboard de Monitoreo Directo | SounMix SpA v2.8
+            </div>
         </div >
     );
 };
