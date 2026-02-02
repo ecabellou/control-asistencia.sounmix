@@ -49,7 +49,7 @@ const Login = () => {
                 className="w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[2rem] shadow-2xl relative z-10"
             >
                 <div className="text-center mb-8">
-                    <img src={logo} alt="SounMix Logo" className="h-16 mx-auto mb-6 brightness-110 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]" />
+                    <img src={logo} alt="SoundMix Logo" className="h-16 mx-auto mb-6 brightness-110 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]" />
                     <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Panel Administrativo</h2>
                     <p className="text-slate-400 text-sm">Sistema de Gestión de Personal</p>
                 </div>
@@ -62,7 +62,7 @@ const Login = () => {
                             <input
                                 type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
                                 className="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 pl-10 pr-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-600"
-                                placeholder="usuario@sounmix.cl"
+                                placeholder="usuario@soundmix.cl"
                             />
                         </div>
                     </div>
@@ -97,7 +97,7 @@ const Login = () => {
 
                 <div className="mt-10 pt-6 border-t border-white/5 text-center">
                     <p className="text-[10px] text-slate-500 uppercase tracking-widest">
-                        Powered by SounMix Chile &bull; 2026
+                        Powered by SoundMix Chile &bull; 2026
                     </p>
                 </div>
             </motion.div>

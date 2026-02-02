@@ -282,10 +282,10 @@ const Kiosk = () => {
 
             <header className="w-full max-w-5xl flex justify-between items-start relative z-10 px-4 md:px-6 pt-2">
                 <div className="flex items-center space-x-3 mt-1">
-                    <img src={logo} alt="SounMix" className="h-7 md:h-9 w-auto opacity-90" />
+                    <img src={logo} alt="SoundMix" className="h-7 md:h-9 w-auto opacity-90" />
                     <div className="h-5 w-[1px] bg-white/10" />
                     <div className="flex flex-col">
-                        <h1 className="text-base md:text-lg font-black tracking-tighter leading-none text-white">SOUNMIX</h1>
+                        <h1 className="text-base md:text-lg font-black tracking-tighter leading-none text-white">SOUNDMIX</h1>
                         <span className="text-[8px] text-blue-500 font-bold tracking-[.2em] uppercase">Terminal</span>
                     </div>
                 </div>
@@ -313,7 +313,7 @@ const Kiosk = () => {
                                 {status === 'idle' && (
                                     <motion.div key="idle" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-2">
                                         <h2 className="text-2xl font-black tracking-tight uppercase">Acerque su Código QR</h2>
-                                        <p className="text-slate-500 text-sm tracking-wide">Terminal SounMix lista para registro</p>
+                                        <p className="text-slate-500 text-sm tracking-wide">Terminal SoundMix lista para registro</p>
                                     </motion.div>
                                 )}
                                 {status === 'scanning' && (
@@ -399,7 +399,7 @@ const Kiosk = () => {
                                 <CheckCircle size={40} />
                             </div>
                             <h2 className="text-4xl font-black tracking-tighter mb-2 uppercase">¡ÉXITO!</h2>
-                            <p className="text-green-500 font-medium tracking-wide">Registro SounMix completado con éxito ✅</p>
+                            <p className="text-green-500 font-medium tracking-wide">Registro SoundMix completado con éxito ✅</p>
                         </motion.div>
                     )}
 
@@ -422,7 +422,7 @@ const Kiosk = () => {
                     <div className={`w-1.5 h-1.5 rounded-full ${location ? 'bg-green-500' : 'bg-red-500 animate-ping'}`} />
                     <span>GEOLOCALIZACIÓN: {location ? 'ACTIVA' : '...'}</span>
                 </div>
-                <span>SounMix v2.7.5</span>
+                <span>SoundMix v2.7.5</span>
             </footer>
         </div>
     );

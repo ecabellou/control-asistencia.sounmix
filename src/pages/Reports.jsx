@@ -214,12 +214,12 @@ const Reports = () => {
             const doc = new jsPDF();
             doc.setFontSize(20);
             doc.setTextColor(30, 41, 59);
-            doc.text("REGISTRO DE ASISTENCIA SOUNMIX", 14, 20);
+            doc.text("REGISTRO DE ASISTENCIA SOUNDMIX", 14, 20);
 
             doc.setFontSize(10);
             doc.setTextColor(100, 116, 139);
             doc.text(`Periodo: ${dateRange.start} al ${dateRange.end}`, 14, 28);
-            doc.text(`Empresa: SounMix SpA | Reporte de Evidencia de Asistencia`, 14, 33);
+            doc.text(`Empresa: SoundMix SpA | Reporte de Evidencia de Asistencia`, 14, 33);
             doc.text(`Fecha Emisión: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 38);
 
             const tableColumn = ["Fecha", "Trabajador", "RUT", "Entrada", "Salida", "Hrs Trab.", "Extras"];
@@ -277,7 +277,7 @@ const Reports = () => {
             doc.text("__________________________", 120, finalY);
             doc.text("Firma Empleador / Sello", 120, finalY + 5);
 
-            doc.save(`Reporte_SounMix_${dateRange.start}.pdf`);
+            doc.save(`Reporte_SoundMix_${dateRange.start}.pdf`);
         } catch (err) {
             console.error(err);
             alert("Error al generar PDF");
@@ -386,7 +386,7 @@ const Reports = () => {
                         <FileText className="text-blue-600" size={32} />
                         REPORTES DT
                     </h1>
-                    <p className="text-slate-500 font-medium text-sm mt-1">SounMix SpA | Control de Asistencia Biométrico</p>
+                    <p className="text-slate-500 font-medium text-sm mt-1">SoundMix SpA | Control de Asistencia Biométrico</p>
                 </div>
 
                 <div className="flex flex-wrap gap-3">

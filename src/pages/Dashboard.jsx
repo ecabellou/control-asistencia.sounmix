@@ -264,7 +264,7 @@ const Dashboard = () => {
             )}
 
             <div className="mt-12 flex items-center justify-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-[.3em]">
-                <ShieldCheck size={14} className="text-blue-400" /> Monitor SounMix SpA v2.8.1
+                <ShieldCheck size={14} className="text-blue-400" /> Monitor SoundMix SpA v2.8.1
             </div>
         </div>
     );

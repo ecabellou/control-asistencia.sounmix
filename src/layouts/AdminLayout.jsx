@@ -2,6 +2,8 @@ import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { Users, LayoutDashboard, FileText, QrCode, Bell, Settings } from 'lucide-react';
 
+import logo from '../assets/logo.png';
+
 const AdminLayout = () => {
     const navItems = [
         { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
@@ -14,9 +16,10 @@ const AdminLayout = () => {
         <div className="flex h-screen bg-slate-50 font-sans">
             {/* Sidebar */}
             <aside className="w-64 bg-white border-r border-slate-200 flex flex-col">
-                <div className="p-6 border-b border-slate-200">
-                    <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                        Attendance 2026
+                <div className="p-6 border-b border-slate-200 flex items-center gap-3">
+                    <img src={logo} alt="SoundMix" className="h-8 w-auto" />
+                    <h1 className="text-sm font-black text-slate-800 leading-tight uppercase tracking-tighter">
+                        Registro Control SoundMix
                     </h1>
                 </div>
                 <nav className="flex-1 p-4 space-y-2">
