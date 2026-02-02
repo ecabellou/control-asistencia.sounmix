@@ -249,12 +249,15 @@ const Kiosk = () => {
     const confirmMarking = async () => {
         setStatus('submitting');
         try {
-            // Usar ruta relativa que funciona tanto en local como en Vercel
-            await axios.post('/api/attendance/scan', {
+            await axios.post('https://twyndowkjummyjoouqnf.supabase.co/functions/v1/process-attendance', {
                 employeeId: scannedData.id,
-                lat: location?.lat || 0,
-                lng: location?.lng || 0,
+                lat: location?.lat,
+                lng: location?.lng,
                 timestamp: new Date().toISOString()
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+                }
             });
             setStatus('success');
             setTimeout(() => {
