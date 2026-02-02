@@ -16,11 +16,18 @@ const AdminLayout = () => {
         <div className="flex h-screen bg-slate-50 font-sans">
             {/* Sidebar */}
             <aside className="w-64 bg-white border-r border-slate-200 flex flex-col">
-                <div className="p-6 border-b border-slate-200 flex items-center gap-3">
-                    <img src={logo} alt="SoundMix" className="h-8 w-auto" />
-                    <h1 className="text-sm font-black text-slate-800 leading-tight uppercase tracking-tighter">
-                        Registro Control SoundMix
-                    </h1>
+                <div className="p-6 flex items-center gap-3 bg-gradient-to-br from-blue-700 to-indigo-900 text-white shadow-inner">
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center p-2 backdrop-blur-md border border-white/10 shadow-lg">
+                        <img src={logo} alt="SoundMix" className="w-full h-full object-contain brightness-0 invert" />
+                    </div>
+                    <div className="flex flex-col">
+                        <p className="text-[9px] font-black text-blue-200 uppercase tracking-[0.3em] leading-none mb-1.5 opacity-80">
+                            Registro Control
+                        </p>
+                        <h1 className="text-base font-black text-white uppercase tracking-tighter leading-none">
+                            SOUNDMIX
+                        </h1>
+                    </div>
                 </div>
                 <nav className="flex-1 p-4 space-y-2">
                     {navItems.map((item) => (
