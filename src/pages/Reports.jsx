@@ -19,7 +19,7 @@ import {
 import { format, startOfMonth, endOfMonth, parseISO, differenceInMinutes, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Select from 'react-select';
-import { jsPDF } from 'jspdf';
+import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -206,54 +206,83 @@ const Reports = () => {
 
     const exportToPDF = async () => {
         setDownloading(true);
+        console.log("Iniciando generación de PDF...");
         try {
-            if (logs.length === 0) {
-                alert("No hay datos para este periodo");
+            if (!logs || logs.length === 0) {
+                alert("No hay datos cargados para exportar. Por favor, asegúrese de que haya registros visibles en la tabla.");
                 setDownloading(false);
                 return;
             }
 
             const doc = new jsPDF();
 
-            // Header
-            doc.setFontSize(18);
-            doc.setTextColor(40);
-            doc.text("REPORTE ASISTENCIA LEGAL - SOUNMIX", 14, 22);
+            // Título y Encabezado
+            doc.setFontSize(20);
+            doc.setTextColor(30, 41, 59); // Slate 800
+            doc.text("REGISTRO DE ASISTENCIA SOUNMIX", 14, 20);
 
             doc.setFontSize(10);
-            doc.setTextColor(100);
-            doc.text(`Periodo: ${dateRange.start} al ${dateRange.end}`, 14, 30);
-            doc.text(`Generado: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 35);
+            doc.setTextColor(100, 116, 139); // Slate 500
+            doc.text(`Periodo: ${dateRange.start} al ${dateRange.end}`, 14, 28);
+            doc.text(`Empresa: SounMix SpA | Reporte Legal DT`, 14, 33);
+            doc.text(`Fecha Emisión: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 38);
 
-            const tableColumn = ["Fecha", "Trabajador", "Entrada", "Salida", "Hrs Trab.", "Extras"];
+            // Preparar Datos de la Tabla
+            const tableColumn = ["Fecha", "Trabajador", "RUT", "Entrada", "Salida", "Hrs Trab.", "Extras"];
             const tableRows = logs.map(log => [
-                log.date,
-                log.employee?.full_name,
-                log.entryTime,
-                log.exitTime,
-                `${(log.totalMinutes / 60).toFixed(1)}h`,
-                `${(log.overtime / 60).toFixed(1)}h`
+                log.date || '-',
+                log.employee?.full_name || 'N/A',
+                log.employee?.rut || 'N/A',
+                log.entryTime || '--:--',
+                log.exitTime || '--:--',
+                `${((log.totalMinutes || 0) / 60).toFixed(1)}h`,
+                `${((log.overtime || 0) / 60).toFixed(1)}h`
             ]);
 
+            console.log("Generando tabla autotable...");
             autoTable(doc, {
                 head: [tableColumn],
                 body: tableRows,
                 startY: 45,
-                theme: 'grid',
-                headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-                styles: { fontSize: 8 }
+                theme: 'striped',
+                headStyles: {
+                    fillColor: [37, 99, 235], // Blue 600
+                    textColor: [255, 255, 255],
+                    fontSize: 9,
+                    fontStyle: 'bold'
+                },
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 3
+                },
+                columnStyles: {
+                    0: { cellWidth: 25 },
+                    1: { cellWidth: 'auto' },
+                    2: { cellWidth: 30 }
+                },
+                didDrawPage: (data) => {
+                    // Footer por página
+                    doc.setFontSize(8);
+                    const pgCount = doc.internal.getNumberOfPages();
+                    doc.text(`Página ${pgCount}`, data.settings.margin.left, doc.internal.pageSize.height - 10);
+                }
             });
 
-            // Footer / Legal section
-            let yPos = doc.lastAutoTable?.finalY + 15 || 250;
-            doc.setFontSize(8);
-            doc.setTextColor(150);
-            doc.text("Este reporte constituye un registro legal de asistencia según la normativa vigente en Chile.", 14, yPos);
+            const finalY = (doc).lastAutoTable.finalY + 15;
+            doc.setFontSize(9);
+            doc.setTextColor(30, 41, 59);
+            doc.text("__________________________", 14, finalY + 20);
+            doc.text("Firma del Trabajador", 14, finalY + 25);
 
-            doc.save(`Reporte_DT_${dateRange.start}_${dateRange.end}.pdf`);
+            doc.text("__________________________", 120, finalY + 20);
+            doc.text("Firma Empleador / Sello", 120, finalY + 25);
+
+            console.log("Guardando archivo...");
+            doc.save(`Reporte_Asistencia_${dateRange.start}_${dateRange.end}.pdf`);
+            console.log("PDF generado con éxito.");
         } catch (err) {
-            console.error('Error generating PDF:', err);
-            alert("Error al generar el PDF. Por favor intente de nuevo.");
+            console.error('Error detallado PDF:', err);
+            alert("No se pudo generar el PDF. Detalle técnico: " + (err.message || "Error desconocido"));
         } finally {
             setDownloading(false);
         }
