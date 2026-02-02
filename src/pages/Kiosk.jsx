@@ -249,9 +249,8 @@ const Kiosk = () => {
     const confirmMarking = async () => {
         setStatus('submitting');
         try {
-            // Llamar al backend Express en lugar de Edge Function
-            const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-            await axios.post(`${backendUrl}/api/attendance/scan`, {
+            // Usar ruta relativa que funciona tanto en local como en Vercel
+            await axios.post('/api/attendance/scan', {
                 employeeId: scannedData.id,
                 lat: location?.lat || 0,
                 lng: location?.lng || 0,
