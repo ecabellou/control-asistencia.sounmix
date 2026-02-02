@@ -16,6 +16,7 @@ const Kiosk = () => {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [photo, setPhoto] = useState(null);
     const [isSleeping, setIsSleeping] = useState(false);
+    const [wakeLock, setWakeLock] = useState(null);
 
     const scannerRef = useRef(null);
     const isProcessingRef = useRef(false);
@@ -23,9 +24,37 @@ const Kiosk = () => {
     const motionCanvasRef = useRef(null);
     const prevFrameRef = useRef(null);
 
-    // 1. Reloj y Geolocalización
+    // 1. Reloj, Geolocalización y WakeLock
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+
+        // Función para solicitar el bloqueo de sueño
+        const requestWakeLock = async () => {
+            try {
+                if ('wakeLock' in navigator) {
+                    const lock = await navigator.wakeLock.request('screen');
+                    setWakeLock(lock);
+                    console.log("Pantalla bloqueada (Always On activado)");
+
+                    lock.addEventListener('release', () => {
+                        console.log("Wake Lock liberado");
+                    });
+                }
+            } catch (err) {
+                console.error(`Error al activar Wake Lock: ${err.name}, ${err.message}`);
+            }
+        };
+
+        // Solicitar al cargar (requiere interacción previa o focus)
+        requestWakeLock();
+
+        // Re-solicitar si la pestaña vuelve a ser visible
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                requestWakeLock();
+            }
+        };
+
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (pos) => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
@@ -35,10 +64,15 @@ const Kiosk = () => {
 
         const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
         document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        document.addEventListener('click', requestWakeLock, { once: true }); // Activar al primer toque
 
         return () => {
             clearInterval(timer);
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            document.removeEventListener('click', requestWakeLock);
+            if (wakeLock) wakeLock.release();
         };
     }, []);
 
