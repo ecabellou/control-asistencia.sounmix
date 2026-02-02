@@ -100,35 +100,90 @@ const Employees = () => {
         if (!qrEmployee) return;
 
         try {
-            const canvas = document.querySelector('canvas');
-            if (!canvas) return;
+            // Usamos un canvas oculto para generar una imagen de alta calidad con el diseño elegante
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 1200;
+            canvas.height = 630; // Formato horizontal premium
 
-            // 1. Convert Canvas to Blob
+            // Background - Gradient elegante
+            const gradient = ctx.createLinearGradient(0, 0, 1200, 630);
+            gradient.addColorStop(0, '#0f172a'); // slate-900
+            gradient.addColorStop(1, '#1e293b'); // slate-800
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 1200, 630);
+
+            // Adornos - Círculos sutiles
+            ctx.beginPath();
+            ctx.arc(1100, 100, 300, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(37, 99, 235, 0.1)';
+            ctx.fill();
+
+            // Dibujar el QR real
+            const qrCanvasHidden = document.querySelector('.qr-canvas-hidden canvas');
+            if (qrCanvasHidden) {
+                // Sombra para el QR
+                ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                ctx.shadowBlur = 30;
+
+                // Fondo blanco redondeado para el QR
+                ctx.fillStyle = '#ffffff';
+                const r = 40, x = 60, y = 115, w = 400, h = 400;
+                ctx.beginPath();
+                ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+                ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+                ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+                ctx.drawImage(qrCanvasHidden, 85, 140, 350, 350);
+            }
+
+            // Textos
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 60px Inter, system-ui, sans-serif';
+            ctx.fillText(qrEmployee.full_name.toUpperCase(), 520, 280);
+
+            ctx.fillStyle = '#94a3b8'; // slate-400
+            ctx.font = '500 35px monospace';
+            ctx.fillText(qrEmployee.rut, 520, 340);
+
+            // Separador
+            ctx.fillStyle = '#2563eb'; // blue-600
+            ctx.fillRect(520, 380, 100, 8);
+
+            // Branding
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 30px Inter, sans-serif';
+            ctx.fillText('SOUNDMIX SPA', 520, 450);
+
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.font = '500 20px Inter, sans-serif';
+            ctx.fillText('REGISTRO DE ASISTENCIA BIOMÉTRICO', 520, 485);
+
+            // Convertir y Compartir
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-            const file = new File([blob], `QR_${qrEmployee.full_name}.png`, { type: 'image/png' });
+            const file = new File([blob], `Credencial_${qrEmployee.full_name.replace(/\s+/g, '_')}.png`, { type: 'image/png' });
 
-            // 2. Check if Web Share API supports files
             if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({
                     files: [file],
-                    title: `Código QR - ${qrEmployee.full_name}`,
-                    text: `Hola ${qrEmployee.full_name}, adjunto tu código QR para el control de asistencia de SoundMix.`
+                    title: `Credencial SoundMix - ${qrEmployee.full_name}`,
+                    text: `Hola ${qrEmployee.full_name}, aquí tienes tu credencial digital para el registro de asistencia.`
                 });
             } else {
-                // Fallback: If Web Share is not supported, we use a standard WhatsApp link 
-                // and instruct the user to copy/paste or we just download the image for them.
-                const imageUrl = canvas.toDataURL("image/png");
                 const link = document.createElement('a');
-                link.download = `QR_${qrEmployee.full_name}.png`;
-                link.href = imageUrl;
+                link.download = `Credencial_${qrEmployee.full_name.replace(/\s+/g, '_')}.png`;
+                link.href = canvas.toDataURL("image/png");
                 link.click();
-
-                const message = encodeURIComponent(`Hola ${qrEmployee.full_name}, te envío tu código QR de SoundMix. (Recuerda adjuntar la imagen que se acaba de descargar)`);
-                window.open(`https://wa.me/${qrEmployee.phone?.replace(/\D/g, '') || ''}?text=${message}`, '_blank');
+                const msg = encodeURIComponent(`Hola ${qrEmployee.full_name}, te envío tu credencial de SoundMix. Por favor adjunta la imagen descargada.`);
+                window.open(`https://wa.me/${qrEmployee.phone?.replace(/\D/g, '') || ''}?text=${msg}`, '_blank');
             }
         } catch (err) {
             console.error('Error sharing:', err);
-            alert('No se pudo compartir directamente. La imagen se descargará automáticamente.');
+            alert('Error al generar la credencial elegante.');
         }
     };
 
@@ -304,39 +359,72 @@ const Employees = () => {
 
             {/* Modal de QR */}
             {qrValue && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center">
-                        <h3 className="text-xl font-bold text-slate-800 mb-6 uppercase tracking-tight">QR Identificador Único</h3>
-                        <div className="p-4 bg-white border-2 border-slate-100 rounded-2xl shadow-inner mb-4">
-                            <QRCodeCanvas value={qrValue} size={250} level="H" />
+                <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="w-full max-w-2xl bg-white rounded-[2.5rem] overflow-hidden shadow-2xl"
+                    >
+                        {/* Vista Previa de la Tarjeta Elegante (Horizontal) */}
+                        <div className="relative p-1 bg-gradient-to-br from-slate-800 to-slate-900 overflow-hidden">
+
+                            <div className="flex flex-col md:flex-row items-center p-8 md:p-12 gap-8 relative z-10">
+                                {/* Zona QR */}
+                                <div className="bg-white p-6 rounded-[2rem] shadow-2xl transform -rotate-2 hover:rotate-0 transition-transform duration-500">
+                                    <QRCodeCanvas value={qrValue} size={180} level="H" />
+                                </div>
+
+                                {/* Info Trabajador */}
+                                <div className="text-center md:text-left flex-1 space-y-4">
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em]">Credencial Digital</p>
+                                        <h3 className="text-3xl font-black text-white leading-tight tracking-tighter">
+                                            {qrEmployee?.full_name}
+                                        </h3>
+                                        <p className="text-lg font-mono text-slate-400">{qrEmployee?.rut}</p>
+                                    </div>
+
+                                    <div className="h-1 w-12 bg-blue-500 rounded-full mx-auto md:mx-0"></div>
+
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-300 uppercase tracking-widest">SoundMix SpA</p>
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Asistencia Biométrica</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Elementos decorativos de fondo */}
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                            <div className="absolute bottom-0 left-0 w-48 h-48 bg-slate-700/20 rounded-full blur-2xl -ml-24 -mb-24"></div>
                         </div>
-                        <div className="text-center mb-6">
-                            <p className="text-lg font-bold text-slate-900">{qrEmployee?.full_name}</p>
-                            <p className="text-sm text-slate-500 font-mono">{qrEmployee?.rut}</p>
-                        </div>
-                        <div className="flex flex-wrap justify-center gap-4">
+
+                        {/* Botones de acción */}
+                        <div className="p-8 bg-slate-50 flex flex-wrap justify-center gap-4 border-t border-slate-100">
                             <button
                                 onClick={handlePrint}
-                                className="bg-slate-800 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-900 transition-all flex items-center space-x-2 shadow-lg"
+                                className="bg-white border border-slate-200 text-slate-700 px-8 py-3.5 rounded-2xl text-sm font-black hover:bg-slate-100 transition-all flex items-center gap-3 shadow-sm"
                             >
-                                <QRIcon size={16} />
-                                <span>Imprimir Credencial</span>
+                                <QRIcon size={20} /> IMPRIMIR FÍSICO
                             </button>
                             <button
                                 onClick={shareToWhatsApp}
-                                className="bg-green-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-700 transition-all flex items-center space-x-2 shadow-lg shadow-green-100"
+                                className="bg-slate-900 text-white px-8 py-3.5 rounded-2xl text-sm font-black hover:bg-black transition-all flex items-center gap-3 shadow-xl"
                             >
-                                <MessageSquare size={16} />
-                                <span>Compartir WhatsApp</span>
+                                <MessageSquare size={20} /> COMPARTIR WHATSAPP
                             </button>
                             <button
                                 onClick={() => { setQrValue(null); setQrEmployee(null); }}
-                                className="bg-slate-100 text-slate-600 px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-200 transition-all"
+                                className="px-8 py-3.5 rounded-2xl text-sm font-black text-slate-400 hover:text-slate-600 transition-all"
                             >
-                                Cerrar
+                                CERRAR
                             </button>
                         </div>
-                    </div>
+
+                        {/* QR Oculto con mayor resolución para exportar */}
+                        <div className="qr-canvas-hidden hidden">
+                            <QRCodeCanvas value={qrValue} size={1000} level="H" includeMargin={true} />
+                        </div>
+                    </motion.div>
                 </div>
             )}
         </div>
