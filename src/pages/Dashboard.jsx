@@ -12,7 +12,8 @@ import {
     RefreshCw,
     Activity,
     ShieldCheck,
-    Timer
+    Timer,
+    Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -25,7 +26,7 @@ const Dashboard = () => {
         total: 0,
         present: 0,
         inLunch: 0,
-        onBreak: 0
+        inactive: 0
     });
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -42,7 +43,6 @@ const Dashboard = () => {
         try {
             const today = startOfDay(new Date()).toISOString();
 
-            // 1. Obtener todos los trabajadores activos
             const { data: employees, error: empError } = await supabase
                 .from('employees')
                 .select('id, full_name, rut, weekly_hours_agreed')
@@ -51,7 +51,6 @@ const Dashboard = () => {
 
             if (empError) throw empError;
 
-            // 2. Obtener registros de hoy
             const { data: logs, error: logsError } = await supabase
                 .from('attendance_logs')
                 .select('*')
@@ -60,12 +59,10 @@ const Dashboard = () => {
 
             if (logsError) throw logsError;
 
-            // 3. Procesar estados
             const statusMap = employees.map(emp => {
                 const empLogs = logs.filter(l => l.employee_id === emp.id);
 
-                let currentState = 'INACTIVO'; // INACTIVO, ACTIVO, COLACIÓN, FINALIZADO
-                let lastLog = null;
+                let currentState = 'INACTIVO';
                 let entryTime = null;
                 let exitTime = null;
                 let lunchStart = null;
@@ -90,15 +87,12 @@ const Dashboard = () => {
                         exitTime = l.timestamp;
                         currentState = 'FINALIZADO';
                     }
-                    lastLog = l;
                 });
 
-                // Calcular minutos acumulados hasta ahora (tiempo real)
                 if (entryTime) {
                     const endRange = exitTime ? parseISO(exitTime) : new Date();
                     totalMinutes = differenceInMinutes(endRange, parseISO(entryTime));
 
-                    // Restar colación si terminó, o restar proporcional si está en ella
                     if (lunchStart && lunchEnd) {
                         totalMinutes -= differenceInMinutes(parseISO(lunchEnd), parseISO(lunchStart));
                     } else if (lunchStart && !lunchEnd && !exitTime) {
@@ -111,15 +105,12 @@ const Dashboard = () => {
                     state: currentState,
                     entryTime: entryTime ? format(parseISO(entryTime), 'HH:mm') : null,
                     exitTime: exitTime ? format(parseISO(exitTime), 'HH:mm') : null,
-                    lunchStatus: lunchStart ? (lunchEnd ? 'Completada' : 'En proceso') : 'N/A',
                     accumulatedHours: (Math.max(0, totalMinutes) / 60).toFixed(1),
                     overtime: Math.max(0, (totalMinutes - ((emp.weekly_hours_agreed || 44) / 5 * 60)) / 60).toFixed(1)
                 };
             });
 
             setWorkersStatus(statusMap);
-
-            // Actualizar stats resumidos
             setStats({
                 total: employees.length,
                 present: statusMap.filter(w => w.state === 'ACTIVO').length,
@@ -141,7 +132,6 @@ const Dashboard = () => {
 
     return (
         <div className="p-4 md:p-8 bg-slate-50 min-h-screen font-sans">
-            {/* Header Super-Eficiente */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
                 <div>
                     <h1 className="text-3xl font-black tracking-tighter text-slate-800 flex items-center gap-3">
@@ -164,58 +154,44 @@ const Dashboard = () => {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <button
-                        onClick={fetchDashboardData}
-                        className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-600 hover:bg-slate-50 transition-all shadow-sm active:scale-95"
-                    >
+                    <button onClick={fetchDashboardData} className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
                         <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
                     </button>
                 </div>
             </div>
 
-            {/* Stats Rápido */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 {[
                     { label: 'Total', value: stats.total, icon: <Users />, color: 'blue' },
                     { label: 'Presentes', value: stats.present, icon: <UserCheck />, color: 'green' },
                     { label: 'Almuerzo', value: stats.inLunch, icon: <Coffee />, color: 'amber' },
-                    { label: 'Fuera/Turno', value: stats.inactive, icon: <LogOut />, color: 'slate' },
+                    { label: 'Fuera', value: stats.inactive, icon: <LogOut />, color: 'slate' },
                 ].map((s, i) => (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                        key={i} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4"
-                    >
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center 
-                            ${s.color === 'blue' ? 'bg-blue-50 text-blue-600' : ''}
-                            ${s.color === 'green' ? 'bg-green-50 text-green-600' : ''}
-                            ${s.color === 'amber' ? 'bg-amber-50 text-amber-600' : ''}
-                            ${s.color === 'slate' ? 'bg-slate-50 text-slate-600' : ''}
-                        `}>
+                    <div key={i} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${s.color === 'blue' ? 'bg-blue-50 text-blue-600' : s.color === 'green' ? 'bg-green-50 text-green-600' : s.color === 'amber' ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-600'}`}>
                             {s.icon}
                         </div>
                         <div>
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.label}</p>
                             <p className="text-xl font-bold text-slate-800">{s.value}</p>
                         </div>
-                    </motion.div>
+                    </div>
                 ))}
             </div>
 
-            {/* Monitor Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 <AnimatePresence>
-                    {filteredWorkers.map((worker, idx) => (
+                    {filteredWorkers.map((worker) => (
                         <motion.div
                             key={worker.id}
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             layout
-                            className={`relative bg-white p-6 rounded-[2rem] border transition-all duration-500 overflow-hidden
+                            className={`relative bg-white p-6 rounded-[2rem] border transition-all duration-500 overflow-hidden shadow-xl
                                 ${worker.state === 'ACTIVO' ? 'border-green-100 shadow-green-100/50' :
                                     worker.state === 'COLACIÓN' ? 'border-amber-100 shadow-amber-100/50' :
-                                        'border-slate-100 shadow-slate-100/50'} shadow-xl`}
+                                        'border-slate-100 shadow-slate-100/50'}`}
                         >
-                            {/* Status Badge */}
                             <div className={`absolute top-6 right-6 flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest leading-none border
                                 ${worker.state === 'ACTIVO' ? 'bg-green-50 text-green-600 border-green-100' :
                                     worker.state === 'COLACIÓN' ? 'bg-amber-50 text-amber-600 border-amber-100 animate-pulse' :
@@ -266,8 +242,6 @@ const Dashboard = () => {
                                             </div>
                                         )}
                                     </div>
-
-                                    {/* Progress Bar Simple */}
                                     <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                                         <motion.div
                                             initial={{ width: 0 }}
@@ -282,28 +256,17 @@ const Dashboard = () => {
                 </AnimatePresence>
             </div>
 
-            {
-                loading && filteredWorkers.length === 0 && (
-                    <div className="py-24 flex flex-col items-center justify-center text-slate-300">
-                        <Loader2 className="animate-spin text-blue-600" size={48} />
-                        <p className="mt-4 font-black text-sm uppercase tracking-widest animate-pulse">Sincronizando estados...</p>
-                    </div>
-                )
-            }
-
-            {
-                !loading && filteredWorkers.length === 0 && (
-                    <div className="py-24 text-center">
-                        <Users size={64} className="mx-auto mb-4 opacity-5" />
-                        <p className="font-black text-slate-300 uppercase tracking-widest">No hay trabajadores para mostrar</p>
-                    </div>
-                )
-            }
+            {loading && filteredWorkers.length === 0 && (
+                <div className="py-24 flex flex-col items-center justify-center text-slate-300">
+                    <Loader2 className="animate-spin text-blue-600" size={48} />
+                    <p className="mt-4 font-black text-sm uppercase tracking-widest animate-pulse">Sincronizando...</p>
+                </div>
+            )}
 
             <div className="mt-12 flex items-center justify-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-[.3em]">
-                <ShieldCheck size={14} className="text-blue-400" /> Dashboard de Monitoreo Directo | SounMix SpA v2.8
+                <ShieldCheck size={14} className="text-blue-400" /> Monitor SounMix SpA v2.8.1
             </div>
-        </div >
+        </div>
     );
 };
 
