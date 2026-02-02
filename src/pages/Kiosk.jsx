@@ -55,11 +55,13 @@ const Kiosk = () => {
     // 3. Control del Scanner QR
     useEffect(() => {
         const manageScanner = async () => {
-            if (status === 'idle') {
+            // Mantenemos la cámara encendida en idle, scanning y capturing
+            if (status === 'idle' || status === 'scanning' || status === 'capturing') {
                 if (!scannerRef.current?.isScanning) {
                     await startScanner();
                 }
             } else {
+                // Solo apagamos en confirming, success o error
                 await stopScanner();
             }
         };
