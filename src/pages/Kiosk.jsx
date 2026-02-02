@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, AlertTriangle, Clock, ShieldCheck, Camera, Maximize, Minimize, Power, Ghost } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Clock, ShieldCheck, Camera, Maximize, Minimize, Power, Ghost, QrCode } from 'lucide-react';
+import { QRCodeCanvas } from 'qrcode.react';
 import { Html5Qrcode } from "html5-qrcode";
 import axios from 'axios';
 import { supabase } from '../lib/supabase';
@@ -269,20 +270,65 @@ const Kiosk = () => {
 
                 <AnimatePresence mode="wait">
                     {status === 'confirming' && scannedData && photo && (
-                        <motion.div key="conf" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-sm bg-white/5 backdrop-blur-3xl border border-white/10 p-8 rounded-[2.5rem] shadow-2xl text-center">
-                            <div className="w-28 h-28 rounded-3xl overflow-hidden border-2 border-blue-500/50 mx-auto mb-6 rotate-2 shadow-2xl">
-                                <img src={photo} alt="Validación" className="w-full h-full object-cover scale-110" />
-                            </div>
-                            <div className="space-y-2 mb-8">
-                                <h2 className="text-2xl font-black tracking-tighter truncate">{scannedData.name}</h2>
-                                <div className="bg-blue-500/10 rounded-2xl p-4 border border-blue-500/20">
-                                    <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mb-1">Próximo Evento</p>
-                                    <p className="text-xl font-black text-white">{scannedData.nextEvent}</p>
+                        <motion.div
+                            key="conf"
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            className="w-full max-w-[340px] md:max-w-md bg-slate-900/40 backdrop-blur-3xl border border-white/10 p-6 md:p-8 rounded-[2.5rem] shadow-2xl text-center relative overflow-hidden"
+                        >
+                            {/* Decorative background elements */}
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 blur-[40px] rounded-full -mr-10 -mt-10" />
+
+                            <div className="flex justify-center items-center gap-4 md:gap-6 mb-8 relative z-10">
+                                {/* QR del Trabajador */}
+                                <div className="relative group">
+                                    <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                                    <div className="relative bg-white p-2 rounded-2xl shadow-xl">
+                                        <QRCodeCanvas value={scannedData.id} size={80} level="H" />
+                                    </div>
+                                    <p className="text-[7px] text-slate-500 mt-1 uppercase font-bold tracking-tighter">ID ÚNICO</p>
+                                </div>
+
+                                <div className="h-10 w-[1px] bg-white/10 rotate-12" />
+
+                                {/* Foto Capturada */}
+                                <div className="relative group">
+                                    <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                                    <div className="relative w-24 h-24 rounded-[2rem] overflow-hidden border-2 border-blue-500/50 shadow-2xl">
+                                        <img src={photo} alt="Validación" className="w-full h-full object-cover scale-110" />
+                                    </div>
+                                    <p className="text-[7px] text-blue-400 mt-1 uppercase font-bold tracking-tighter">BIOMETRÍA</p>
                                 </div>
                             </div>
-                            <div className="flex gap-4">
-                                <button onClick={() => setStatus('idle')} className="flex-1 py-4 bg-white/5 rounded-2xl font-bold text-sm">REHACER</button>
-                                <button onClick={confirmMarking} className="flex-[2] py-4 bg-blue-600 rounded-2xl font-black text-lg shadow-lg shadow-blue-500/30 uppercase tracking-tighter">CONFIRMAR</button>
+
+                            <div className="space-y-2 mb-8 relative z-10">
+                                <div className="inline-flex items-center space-x-2 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 mb-2">
+                                    <ShieldCheck size={12} className="text-blue-500" />
+                                    <span className="text-[9px] font-black text-blue-400 uppercase tracking-[.2em]">Identidad Verificada</span>
+                                </div>
+                                <h2 className="text-2xl md:text-3xl font-black tracking-tighter truncate text-white uppercase">{scannedData.name}</h2>
+                                <p className="text-slate-500 text-[10px] font-mono tracking-widest">{scannedData.rut}</p>
+
+                                <div className="bg-white/5 rounded-2xl p-4 border border-white/5 mt-6 shadow-inner relative overflow-hidden group">
+                                    <div className="absolute inset-0 bg-blue-500/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+                                    <p className="text-[9px] text-slate-500 uppercase font-black tracking-[.2em] mb-1 relative z-10">Acción Detectada</p>
+                                    <p className="text-xl md:text-2xl font-black text-white relative z-10">{scannedData.nextEvent}</p>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-4 relative z-10">
+                                <button
+                                    onClick={() => setStatus('idle')}
+                                    className="flex-1 py-4 bg-white/5 hover:bg-white/10 rounded-2xl font-bold text-xs tracking-widest transition-all border border-white/5 uppercase"
+                                >
+                                    Corregir
+                                </button>
+                                <button
+                                    onClick={confirmMarking}
+                                    className="flex-[2] py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 rounded-2xl font-black text-lg shadow-xl shadow-blue-900/40 uppercase tracking-tighter active:scale-95 transition-all"
+                                >
+                                    REGISTRAR
+                                </button>
                             </div>
                         </motion.div>
                     )}
