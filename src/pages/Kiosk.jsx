@@ -196,13 +196,35 @@ const Kiosk = () => {
             const { data, error: empError } = await supabase.from('employees').select('id, full_name, rut').eq('id', employeeId).single();
             if (empError || !data) throw new Error("Trabajador no reconocido");
 
-            const today = new Date().toISOString().split('T')[0];
-            const { data: logs } = await supabase.from('attendance_logs').select('event_type').eq('employee_id', employeeId).gte('timestamp', `${today}T00:00:00Z`).order('timestamp', { ascending: true });
+            // Obtener el último log del trabajador (sin importar el día)
+            const { data: lastLogs } = await supabase
+                .from('attendance_logs')
+                .select('event_type, timestamp')
+                .eq('employee_id', employeeId)
+                .order('timestamp', { ascending: false })
+                .limit(1);
 
-            const events = ['ENTRADA', 'INICIO COLACIÓN', 'TÉRMINO COLACIÓN', 'SALIDA'];
-            if ((logs?.length || 0) >= 4) throw new Error("Jornada completada hoy");
+            const lastLog = lastLogs?.[0];
+            let nextEvent = 'ENTRADA';
 
-            setScannedData({ id: employeeId, name: data.full_name, rut: data.rut, nextEvent: events[logs?.length || 0] });
+            if (lastLog) {
+                const lastTimestamp = new Date(lastLog.timestamp);
+                const currentTimestamp = new Date();
+                const hoursSinceLast = (currentTimestamp - lastTimestamp) / (1000 * 60 * 60);
+
+                // Si el último evento fue hace menos de 16 horas, determinamos el siguiente
+                if (hoursSinceLast < 16) {
+                    switch (lastLog.event_type) {
+                        case 'ENTRY': nextEvent = 'INICIO COLACIÓN'; break;
+                        case 'LUNCH_START': nextEvent = 'TÉRMINO COLACIÓN'; break;
+                        case 'LUNCH_END': nextEvent = 'SALIDA'; break;
+                        case 'EXIT': nextEvent = 'ENTRADA'; break; // Permite re-entrada después de salir
+                    }
+                }
+                // Si pasaron más de 16 horas, es una nueva jornada (ENTRADA)
+            }
+
+            setScannedData({ id: employeeId, name: data.full_name, rut: data.rut, nextEvent });
             setStatus('capturing');
         } catch (err) {
             setError(err.message);
