@@ -126,10 +126,13 @@ const Reports = () => {
                 };
             }
 
-            if (log.event_type === 'ENTRADA') groups[key].entries.push(log);
-            if (log.event_type === 'SALIDA') groups[key].exits.push(log);
-            if (log.event_type === 'INICIO COLACIÓN') groups[key].lunch_starts.push(log);
-            if (log.event_type === 'TÉRMINO COLACIÓN') groups[key].lunch_ends.push(log);
+            const event = log.event_type.toUpperCase();
+
+            if (event === 'ENTRADA' || event === 'ENTRY') groups[key].entries.push(log);
+            if (event === 'SALIDA' || event === 'EXIT') groups[key].exits.push(log);
+            if (event === 'INICIO COLACIÓN' || event === 'LUNCH_START') groups[key].lunch_starts.push(log);
+            if (event === 'TÉRMINO COLACIÓN' || event === 'LUNCH_END') groups[key].lunch_ends.push(log);
+
             if (log.photo_url) groups[key].photos.push({ type: log.event_type, url: log.photo_url });
         });
 
