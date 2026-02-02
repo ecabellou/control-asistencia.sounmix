@@ -81,8 +81,9 @@ const Reports = () => {
                 .from('attendance_logs')
                 .select(`
                     *,
-                    employee:employees(full_name, rut, weekly_hours_agreed)
+                    employee:employees!inner(full_name, rut, weekly_hours_agreed, active)
                 `)
+                .eq('employee.active', true)
                 .gte('timestamp', `${dateRange.start}T00:00:00Z`)
                 .lte('timestamp', `${dateRange.end}T23:59:59Z`)
                 .order('timestamp', { ascending: false });
